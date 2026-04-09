@@ -6,9 +6,7 @@ from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('core.urls')),  # This includes all core URLs including the root login
-    
-    # Optional: Redirect any other attempts to access root
+    path('', include('core.urls')),
     path('index/', RedirectView.as_view(url='/', permanent=True)),
     path('home/', RedirectView.as_view(url='/', permanent=True)),
 ]
