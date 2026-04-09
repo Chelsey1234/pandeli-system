@@ -1,0 +1,158 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Sales Forecast{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Sales Forecast</h2>
+        <form method="post" action="{% url 'run_forecast' %}" class="d-flex">
+            {% csrf_token %}
+            <select name="product_id" class="form-control me-2" style="width: 200px;">
+                <option value="">All Products</option>
+                {% for product in products %}
+                    <option value="{{ product.id }}">{{ product.name }}</option>
+                {% endfor %}
+            </select>
+            <select name="days" class="form-control me-2" style="width: 100px;">
+                <option value="7">7 Days</option>
+                <option value="30" selected>30 Days</option>
+                <option value="60">60 Days</option>
+                <option value="90">90 Days</option>
+            </select>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-chart-line"></i> Generate Forecast
+            </button>
+        </form>
+    </div>
+
+    <div class="row">
+        <!-- Forecast Chart -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Sales Forecast vs Historical</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="forecastChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forecast Summary -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Forecast Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            Total Forecasted Sales
+                            <span class="badge bg-primary rounded-pill">
+                                {{ forecasts|length }} days
+                            </span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            Average Daily
+                            <span class="badge bg-info rounded-pill">
+                                {{ forecasts|length|default:1 }} units
+                            </span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            Confidence Level
+                            <span class="badge bg-success rounded-pill">
+                                95%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forecast Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Detailed Forecast</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Date</th>
+                            <th>Predicted Quantity</th>
+                            <th>Confidence Range</th>
+                            <th>Model Used</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for forecast in forecasts %}
+                        <tr>
+                            <td>{{ forecast.product.name }}</td>
+                            <td>{{ forecast.forecast_date|date:"Y-m-d" }}</td>
+                            <td class="fw-bold">{{ forecast.predicted_quantity }}</td>
+                            <td>
+                                {{ forecast.confidence_lower }} - {{ forecast.confidence_upper }}
+                                <small class="text-muted">(95% CI)</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ forecast.model_used }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">
+                                No forecasts available. Click "Generate Forecast" to create predictions.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Forecast Chart
+    var ctx = document.getElementById('forecastChart').getContext('2d');
+    var forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ forecast_dates|safe }},
+            datasets: [{
+                label: 'Historical Sales',
+                data: {{ historical_values|safe }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1
+            }, {
+                label: 'Forecasted Sales',
+                data: {{ forecast_values|safe }},
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                borderDash: [5, 5],
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Quantity'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

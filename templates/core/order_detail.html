@@ -1,0 +1,185 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Order Details - {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Order Details: {{ order.order_number }}</h2>
+        </div>
+        <div class="col text-end">
+            <a href="{% url 'order_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Orders
+            </a>
+            {% if order.status == 'pending' %}
+                <form method="post" action="{% url 'confirm_order' order.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Confirm this order?')">
+                        <i class="fas fa-check"></i> Confirm Order
+                    </button>
+                </form>
+            {% endif %}
+            <button class="btn btn-info" onclick="window.print()">
+                <i class="fas fa-print"></i> Print Invoice
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Order Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th>Order Number:</th>
+                            <td>{{ order.order_number }}</td>
+                        </tr>
+                        <tr>
+                            <th>Order Type:</th>
+                            <td>
+                                <span class="badge bg-info">{{ order.get_order_type_display }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'confirmed' %}info{% elif order.status == 'delivered' %}success{% elif order.status == 'cancelled' %}danger{% else %}secondary{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Payment Status:</th>
+                            <td>
+                                <span class="badge bg-{% if order.payment_status == 'paid' %}success{% else %}warning{% endif %}">
+                                    {{ order.get_payment_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Order Date:</th>
+                            <td>{{ order.created_at|date:"F d, Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Last Updated:</th>
+                            <td>{{ order.updated_at|date:"F d, Y H:i" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Customer Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if order.customer %}
+                        <table class="table table-borderless">
+                            <tr>
+                                <th>Name:</th>
+                                <td>{{ order.customer.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Email:</th>
+                                <td>{{ order.customer.email }}</td>
+                            </tr>
+                            <tr>
+                                <th>Phone:</th>
+                                <td>{{ order.customer.phone }}</td>
+                            </tr>
+                            <tr>
+                                <th>Address:</th>
+                                <td>{{ order.customer.address }}</td>
+                            </tr>
+                            <tr>
+                                <th>Loyalty Points:</th>
+                                <td>{{ order.customer.loyalty_points }}</td>
+                            </tr>
+                        </table>
+                    {% else %}
+                        <p class="text-muted">Walk-in Customer</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Order Items</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order.items.all %}
+                        <tr>
+                            <td>{{ item.product.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>&#8369;{{ item.price|floatformat:2 }}</td>
+                            <td>&#8369;{{ item.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="3" class="text-end">Subtotal:</th>
+                            <th>&#8369;{{ order.subtotal|floatformat:2 }}</th>
+                        </tr>
+                        <tr>
+                            <th colspan="3" class="text-end">Tax:</th>
+                            <th>&#8369;{{ order.tax|floatformat:2 }}</th>
+                        </tr>
+                        {% if order.discount > 0 %}
+                        <tr>
+                            <th colspan="3" class="text-end">Discount:</th>
+                            <th>-&#8369;{{ order.discount|floatformat:2 }}</th>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th colspan="3" class="text-end">Total:</th>
+                            <th class="text-primary">&#8369;{{ order.total|floatformat:2 }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if order.notes %}
+    <div class="card">
+        <div class="card-header">
+            <h5>Notes</h5>
+        </div>
+        <div class="card-body">
+            <p>{{ order.notes }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+@media print {
+    .btn, .navbar, #sidebar, .card-header .btn {
+        display: none !important;
+    }
+    .card {
+        border: 1px solid #ddd !important;
+    }
+}
+</style>
+{% endblock %}

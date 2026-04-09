@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt - {{ order.order_number }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print {
+                display: none;
+            }
+            body {
+                padding: 20px;
+                font-size: 12px;
+            }
+        }
+        .receipt {
+            max-width: 300px;
+            margin: 0 auto;
+            font-family: 'Courier New', monospace;
+        }
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .receipt-header h3 {
+            margin-bottom: 5px;
+        }
+        .receipt-items {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .receipt-items th, .receipt-items td {
+            padding: 5px 0;
+        }
+        .receipt-total {
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .receipt-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt">
+        <div class="receipt-header">
+            <h3>Pandeli Bakery</h3>
+            <p>123 Main Street<br>City, State 12345<br>Tel: (123) 456-7890</p>
+        </div>
+
+        <div class="receipt-info">
+            <p><strong>Order #:</strong> {{ order.order_number }}</p>
+            <p><strong>Date:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</p>
+            <p><strong>Cashier:</strong> {{ order.created_by.get_full_name|default:order.created_by.username }}</p>
+            <p><strong>Customer:</strong> {{ order.customer.name|default:"Walk-in Customer" }}</p>
+            <p><strong>Payment:</strong> {{ order.payment_method|default:"cash"|title }}</p>
+        </div>
+
+        <table class="receipt-items">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th class="text-end">Price</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items.all %}
+                <tr>
+                    <td>{{ item.product.name|truncatechars:15 }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td class="text-end">&#8369;{{ item.price|floatformat:2 }}</td>
+                    <td class="text-end">&#8369;{{ item.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="receipt-total">
+            <table class="w-100">
+                <tr>
+                    <td>Subtotal:</td>
+                    <td class="text-end">&#8369;{{ order.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% if order.tax and order.tax != 0 %}
+                <tr>
+                    <td>Tax:</td>
+                    <td class="text-end">&#8369;{{ order.tax|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if order.discount and order.discount != 0 %}
+                <tr>
+                    <td>Discount:</td>
+                    <td class="text-end">- &#8369;{{ order.discount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td><strong>TOTAL:</strong></td>
+                    <td class="text-end"><strong>&#8369;{{ order.total|floatformat:2 }}</strong></td>
+                </tr>
+                {% if order.payment_method == 'cash' %}
+                <tr>
+                    <td>Cash Received:</td>
+                    <td class="text-end">&#8369;{{ order.amount_received|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td>Change:</td>
+                    <td class="text-end">&#8369;{{ order.change_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+
+        <div class="receipt-footer">
+            <p>Thank you for your purchase!</p>
+            <p>This serves as your official receipt.</p>
+            {% if order.customer and order.customer.loyalty_points %}
+            <p>Loyalty Points Earned: {{ order.total|floatformat:0|add:"0" }}</p>
+            {% endif %}
+        </div>
+
+        <div class="text-center no-print mt-4">
+            <button class="btn btn-primary" onclick="window.print()">Print Receipt</button>
+            <button class="btn btn-secondary" onclick="window.close()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Auto-print when page loads
+        window.onload = function() {
+            // Uncomment the next line to auto-print
+            // window.print();
+        }
+    </script>
+</body>
+</html>

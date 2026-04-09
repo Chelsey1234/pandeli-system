@@ -1,0 +1,76 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Create Notification{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-bullhorn"></i> Create Bulk Notification</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Notification Title</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message</label>
+                            <textarea class="form-control" id="message" name="message" rows="4" required></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="notification_type" class="form-label">Notification Type</label>
+                                <select class="form-control" id="notification_type" name="notification_type">
+                                    <option value="system">System</option>
+                                    <option value="order">Order</option>
+                                    <option value="stock">Stock</option>
+                                    <option value="promo">Promotion</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="recipient_type" class="form-label">Send To</label>
+                                <select class="form-control" id="recipient_type" name="recipient_type">
+                                    <option value="all_admins">All Administrators</option>
+                                    <option value="all_staff">All Staff</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Send Notification
+                            </button>
+                            <a href="{% url 'messages' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Messages
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'trigger_low_stock_check' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-exclamation-triangle"></i> Check Low Stock Now
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

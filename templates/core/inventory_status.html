@@ -1,0 +1,403 @@
+{% extends 'core/base.html' %}
+{% load custom_filters %}  <!-- Add this line at the top -->
+
+{% block title %}Inventory Status{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Inventory Status</h2>
+        <div>
+            {% if is_admin or is_production_admin or is_manager %}
+            <a href="{% url 'product_list' %}" class="btn btn-success me-2">
+                <i class="fas fa-plus-circle"></i> Add Product
+            </a>
+            {% endif %}
+            <a href="{% url 'import_data' %}?type=inventory" class="btn btn-info">
+                <i class="fas fa-upload"></i> Import Stock
+            </a>
+            <a href="{% url 'export_data' %}?type=inventory" class="btn btn-primary">
+                <i class="fas fa-download"></i> Export
+            </a>
+        </div>
+    </div>
+
+    <!-- Low Stock Alerts -->
+    {% if low_stock_products or low_stock_materials %}
+    <div class="alert alert-warning mb-4">
+        <h5><i class="fas fa-exclamation-triangle"></i> Low Stock Alerts</h5>
+        <div class="row">
+            {% if low_stock_products %}
+            <div class="col-md-6">
+                <h6>Products:</h6>
+                <ul>
+                    {% for product in low_stock_products %}
+                    <li>{{ product.name }} - Only {{ product.stock }} left (threshold: {{ product.low_stock_threshold }})</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if low_stock_materials %}
+            <div class="col-md-6">
+                <h6>Raw Materials:</h6>
+                <ul>
+                    {% for material in low_stock_materials %}
+                    <li>{{ material.name }} - Only {{ material.stock_quantity }} {{ material.unit }} left</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Products Inventory -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Products Inventory</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Current Stock</th>
+                            <th>Threshold</th>
+                            <th>Status</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr class="{% if product.stock <= product.low_stock_threshold %}table-warning{% endif %}">
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.get_category_display }}</td>
+                            <td>
+                                <span class="{% if product.stock <= product.low_stock_threshold %}text-danger fw-bold{% endif %}">
+                                    {{ product.stock }}
+                                </span>
+                            </td>
+                            <td>{{ product.low_stock_threshold }}</td>
+                            <td>
+                                {% if product.stock <= product.low_stock_threshold %}
+                                    <span class="badge bg-danger">Low Stock</span>
+                                {% elif product.stock == 0 %}
+                                    <span class="badge bg-secondary">Out of Stock</span>
+                                {% else %}
+                                    <span class="badge bg-success">In Stock</span>
+                                {% endif %}
+                            </td>
+                            <td>&#8369;{{ product.stock|default:0|multiply:product.price|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Raw Materials Inventory -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Raw Materials Inventory</h5>
+            <button class="btn btn-sm btn-success" onclick="openRawMaterialModal()">
+                <i class="fas fa-plus-circle"></i> Add Raw Material
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Material</th>
+                            <th>Unit</th>
+                            <th>Current Stock</th>
+                            <th>Threshold</th>
+                            <th>Status</th>
+                            <th>Value</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for material in raw_materials %}
+                        <tr class="{% if material.stock_quantity <= material.low_stock_threshold %}table-warning{% endif %}">
+                            <td>{{ material.name }}</td>
+                            <td>{{ material.get_unit_display }}</td>
+                            <td>
+                                <span class="{% if material.stock_quantity <= material.low_stock_threshold %}text-danger fw-bold{% endif %}">
+                                    {{ material.stock_quantity }}
+                                </span>
+                            </td>
+                            <td>{{ material.low_stock_threshold }}</td>
+                            <td>
+                                {% if material.stock_quantity <= material.low_stock_threshold %}
+                                    <span class="badge bg-danger">Low Stock</span>
+                                {% elif material.stock_quantity == 0 %}
+                                    <span class="badge bg-secondary">Out of Stock</span>
+                                {% else %}
+                                    <span class="badge bg-success">In Stock</span>
+                                {% endif %}
+                            </td>
+                            <td>&#8369;{{ material.stock_quantity|default:0|multiply:material.cost_per_unit|floatformat:2 }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-info" onclick="editRawMaterial({{ material.id }})" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteRawMaterial({{ material.id }}, '{{ material.name|escapejs }}')" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="card">
+        <div class="card-header">
+            <h5>Recent Transactions</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date/Time</th>
+                            <th>Product</th>
+                            <th>Type</th>
+                            <th>Quantity</th>
+                            <th>Previous</th>
+                            <th>New</th>
+                            <th>Reference</th>
+                            <th>User</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in recent_transactions %}
+                        <tr>
+                            <td>{{ transaction.created_at|date:"Y-m-d H:i" }}</td>
+                            <td>{{ transaction.product.name }}</td>
+                            <td>
+                                <span class="badge bg-{% if transaction.transaction_type == 'in' %}success{% elif transaction.transaction_type == 'out' %}danger{% else %}info{% endif %}">
+                                    {{ transaction.get_transaction_type_display }}
+                                </span>
+                            </td>
+                            <td>{{ transaction.quantity }}</td>
+                            <td>{{ transaction.previous_stock }}</td>
+                            <td>{{ transaction.new_stock }}</td>
+                            <td>{{ transaction.reference|default:"-" }}</td>
+                            <td>{{ transaction.created_by.username }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">No recent transactions</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Raw Material Create/Edit Modal -->
+<div class="modal fade" id="rawMaterialModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="rawMaterialModalTitle">
+                    <i class="fas fa-plus-circle"></i> Add Raw Material
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="rawMaterialForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Name</label>
+                            <input type="text" class="form-control" id="rmName" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Unit</label>
+                            <select class="form-select" id="rmUnit" required>
+                                <option value="">Select Unit</option>
+                                <option value="kg">Kilogram</option>
+                                <option value="g">Gram</option>
+                                <option value="l">Liter</option>
+                                <option value="ml">Milliliter</option>
+                                <option value="pcs">Pieces</option>
+                                <option value="pack">Pack</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Stock Quantity</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="rmStockQuantity" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Low Stock Threshold</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="rmLowStockThreshold" value="10" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">Reorder Point</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="rmReorderPoint" value="5" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Cost per Unit</label>
+                            <input type="number" step="0.01" min="0" class="form-control" id="rmCostPerUnit" value="0" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Supplier</label>
+                            <input type="text" class="form-control" id="rmSupplier">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="saveRawMaterialBtn" onclick="saveRawMaterial()">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+let editingRawMaterialId = null;
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showMessage(msg) {
+    alert(msg);
+}
+
+function resetRawMaterialForm() {
+    document.getElementById('rawMaterialForm').reset();
+    document.getElementById('rmLowStockThreshold').value = 10;
+    document.getElementById('rmReorderPoint').value = 5;
+    document.getElementById('rmCostPerUnit').value = 0;
+    editingRawMaterialId = null;
+    document.getElementById('rawMaterialModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Add Raw Material';
+}
+
+function openRawMaterialModal() {
+    resetRawMaterialForm();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('rawMaterialModal')).show();
+}
+
+function saveRawMaterial() {
+    const payload = {
+        name: document.getElementById('rmName').value.trim(),
+        unit: document.getElementById('rmUnit').value,
+        stock_quantity: document.getElementById('rmStockQuantity').value,
+        low_stock_threshold: document.getElementById('rmLowStockThreshold').value,
+        reorder_point: document.getElementById('rmReorderPoint').value,
+        cost_per_unit: document.getElementById('rmCostPerUnit').value,
+        supplier: document.getElementById('rmSupplier').value.trim(),
+    };
+
+    if (!payload.name || !payload.unit) {
+        showMessage('Please fill in required fields.');
+        return;
+    }
+
+    const isEdit = editingRawMaterialId !== null;
+    const url = isEdit ? `/api/raw-materials/${editingRawMaterialId}/` : '/api/raw-materials/';
+    const method = isEdit ? 'PATCH' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(async (response) => {
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(JSON.stringify(err));
+        }
+        return response.json();
+    })
+    .then(() => {
+        bootstrap.Modal.getInstance(document.getElementById('rawMaterialModal')).hide();
+        showMessage(isEdit ? 'Raw material updated successfully.' : 'Raw material added successfully.');
+        window.location.reload();
+    })
+    .catch((error) => {
+        console.error(error);
+        showMessage('Failed to save raw material.');
+    });
+}
+
+function editRawMaterial(id) {
+    fetch(`/api/raw-materials/${id}/`)
+        .then(async (response) => {
+            if (!response.ok) throw new Error('Failed to load raw material.');
+            return response.json();
+        })
+        .then((m) => {
+            editingRawMaterialId = m.id;
+            document.getElementById('rawMaterialModalTitle').innerHTML = '<i class="fas fa-edit"></i> Edit Raw Material';
+            document.getElementById('rmName').value = m.name || '';
+            document.getElementById('rmUnit').value = m.unit || '';
+            document.getElementById('rmStockQuantity').value = m.stock_quantity ?? 0;
+            document.getElementById('rmLowStockThreshold').value = m.low_stock_threshold ?? 10;
+            document.getElementById('rmReorderPoint').value = m.reorder_point ?? 5;
+            document.getElementById('rmCostPerUnit').value = m.cost_per_unit ?? 0;
+            document.getElementById('rmSupplier').value = m.supplier || '';
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('rawMaterialModal')).show();
+        })
+        .catch((error) => {
+            console.error(error);
+            showMessage('Failed to load raw material details.');
+        });
+}
+
+function deleteRawMaterial(id, name) {
+    if (!confirm(`Delete raw material "${name}"?`)) return;
+    fetch(`/api/raw-materials/${id}/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+    })
+    .then((response) => {
+        if (!response.ok) throw new Error('Failed to delete raw material.');
+        showMessage('Raw material deleted successfully.');
+        window.location.reload();
+    })
+    .catch((error) => {
+        console.error(error);
+        showMessage('Failed to delete raw material.');
+    });
+}
+</script>
+{% endblock %}
+{% endblock %}

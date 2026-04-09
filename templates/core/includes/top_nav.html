@@ -1,0 +1,90 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <button type="button" id="sidebarCollapse" class="btn btn-dark">
+            <i class="fas fa-bars"></i>
+        </button>
+        
+        <div class="ms-auto d-flex align-items-center">
+            <!-- Quick Actions -->
+            <div class="dropdown me-3">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-plus"></i> Quick Actions
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#newOrderModal">
+                        <i class="fas fa-shopping-cart me-2"></i>New Order
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'product_list' %}">
+                        <i class="fas fa-box me-2"></i>Add Product
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'pos' %}">
+                        <i class="fas fa-cash-register me-2"></i>Open POS
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'import_data' %}">
+                        <i class="fas fa-upload me-2"></i>Import Data
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'export_data' %}">
+                        <i class="fas fa-download me-2"></i>Export Data
+                    </a></li>
+                </ul>
+            </div>
+            
+            <!-- Notifications Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown">
+                    <i class="fas fa-bell"></i>
+                    {% if unread_notifications_count > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ unread_notifications_count }}
+                        </span>
+                    {% endif %}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" style="width: 350px;" aria-labelledby="notificationDropdown">
+                    <li class="dropdown-header d-flex justify-content-between align-items-center">
+                        <span>Notifications</span>
+                        {% if unread_notifications_count > 0 %}
+                            <button class="btn btn-sm btn-link" onclick="NotificationManager.markAllAsRead()">
+                                <small>Mark all as read</small>
+                            </button>
+                        {% endif %}
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        {% for notification in recent_notifications %}
+                            <li>
+                                <a class="dropdown-item {% if not notification.is_read %}bg-light{% endif %}" 
+                                   href="{% url 'messages' %}?read={{ notification.id }}">
+                                    <div class="d-flex align-items-start">
+                                        <div class="flex-shrink-0 me-2">
+                                            {% if not notification.is_read %}
+                                                <span class="dot bg-primary" style="width: 8px; height: 8px; display: inline-block; border-radius: 50%;"></span>
+                                            {% else %}
+                                                <span style="width: 8px; height: 8px; display: inline-block;"></span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <strong>{{ notification.title }}</strong>
+                                            <br>
+                                            <small>{{ notification.message|truncatechars:50 }}</small>
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="far fa-clock me-1"></i>{{ notification.created_at|timesince }} ago
+                                            </small>
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                        {% empty %}
+                            <li><span class="dropdown-item text-muted text-center py-3">No notifications</span></li>
+                        {% endfor %}
+                    </div>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-center text-primary" href="{% url 'messages' %}">
+                        <i class="fas fa-envelope me-1"></i> View All Messages
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>

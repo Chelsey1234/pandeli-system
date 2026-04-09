@@ -1,0 +1,211 @@
+/* New Order Modal Styles */
+
+.modal-content {
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.modal-header.bg-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    padding: 1.2rem 1.5rem;
+}
+
+.modal-header .btn-close-white {
+    filter: brightness(0) invert(1);
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.modal-header .btn-close-white:hover {
+    opacity: 1;
+}
+
+.modal-body {
+    padding: 1.8rem;
+}
+
+.modal-footer {
+    padding: 1.2rem 1.8rem;
+    border-top: 2px solid #edf2f7;
+}
+
+/* Form Labels */
+.form-label {
+    font-weight: 600;
+    color: #C98A6B;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-label i {
+    color: #667eea;
+    margin-right: 0.3rem;
+}
+
+/* Form Controls */
+.form-select, .form-control {
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.6rem 1rem;
+    transition: all 0.2s;
+}
+
+.form-select:focus, .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+/* Input Group */
+.input-group-text {
+    background-color: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-right: none;
+    border-radius: 10px 0 0 10px;
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.input-group .form-control {
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+}
+
+.input-group .form-control:focus {
+    border-left: none;
+}
+
+/* Table Styles */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    color: #C98A6B;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.75rem;
+}
+
+.table tbody td {
+    padding: 0.75rem;
+    vertical-align: middle;
+}
+
+.table tfoot td {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+/* Product Row */
+.item-row:last-child td {
+    border-bottom: none;
+}
+
+/* Buttons */
+.btn-success {
+    background: linear-gradient(135deg, #48bb78, #38a169);
+    border: none;
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s;
+}
+
+.btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.btn-danger {
+    background: #f56565;
+    border: none;
+    color: white;
+    padding: 0.4rem 0.8rem;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    background: #e53e3e;
+    transform: scale(1.05);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #a0aec0;
+    border: none;
+    padding: 0.6rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: #718096;
+}
+
+/* Add Item Button */
+#addItem {
+    border-radius: 20px;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.9rem;
+}
+
+#addItem i {
+    margin-right: 0.3rem;
+}
+
+/* Total Field */
+#orderTotal {
+    font-weight: 700;
+    color: #667eea;
+    background-color: #faf5ff;
+}
+
+/* Readonly Fields */
+.price[readonly], .subtotal[readonly], #orderTotal[readonly] {
+    background-color: #f8f9fa;
+    cursor: default;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    .table thead th {
+        font-size: 0.75rem;
+        padding: 0.5rem;
+    }
+    
+    .table tbody td {
+        padding: 0.5rem;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+    }
+}

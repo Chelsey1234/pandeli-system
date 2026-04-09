@@ -1,0 +1,107 @@
+{% load static %}
+<div class="modal fade" id="newOrderModal" tabindex="-1" aria-labelledby="newOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="newOrderModalLabel">
+                    <i class="fas fa-shopping-cart me-2"></i>Create New Order
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newOrderForm">
+                    {% csrf_token %}
+                    
+                    <!-- Order Type Only -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="orderType" class="form-label fw-bold">Order Type</label>
+                            <select class="form-select" name="order_type" id="orderType">
+                                <option value="walk_in" selected>🚶 Walk-in Customer</option>
+                                <option value="online">🌐 Online Order</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Products Table -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Products</label>
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table table-bordered table-hover" id="orderItems">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th style="width: 45%;">Product</th>
+                                        <th style="width: 15%;">Quantity</th>
+                                        <th style="width: 15%;">Price</th>
+                                        <th style="width: 15%;">Subtotal</th>
+                                        <th style="width: 10%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orderItemsBody">
+                                    <tr class="item-row">
+                                        <td>
+                                            <select class="form-select product-select" required>
+                                                <option value="">-- Select Product --</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control quantity" min="1" value="1" required>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="text" class="form-control price" readonly>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="text" class="form-control subtotal" readonly>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-danger btn-sm remove-item" title="Remove item">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot class="table-light">
+                                    <tr>
+                                        <td colspan="3" class="text-end fw-bold">Total:</td>
+                                        <td>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="text" class="form-control fw-bold text-primary" id="orderTotal" value="0.00" readonly>
+                                            </div>
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success mt-2" id="addItem">
+                            <i class="fas fa-plus-circle me-1"></i> Add Item
+                        </button>
+                    </div>
+                    
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="orderNotes" class="form-label fw-bold">Notes</label>
+                        <textarea class="form-control" id="orderNotes" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="saveOrder">
+                    <i class="fas fa-check me-1"></i> Create Order
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# CSS/JS for this modal are loaded in base.html (once) #}

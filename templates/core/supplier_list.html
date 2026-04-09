@@ -1,0 +1,175 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Suppliers{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Suppliers</h2>
+    <div>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+            <i class="fas fa-plus"></i> Add Supplier
+        </button>
+        <a href="{% url 'export_data' %}?type=suppliers" class="btn btn-primary">
+            <i class="fas fa-download"></i> Export
+        </a>
+    </div>
+</div>
+
+<!-- Search -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="Search suppliers..." value="{{ request.GET.search }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    {% if request.GET.search %}
+                    <a href="{% url 'supplier_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Suppliers Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Contact Person</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Address</th>
+                        <th>Payment Terms</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supplier in suppliers %}
+                    <tr>
+                        <td>{{ supplier.name }}</td>
+                        <td>{{ supplier.contact_person|default:"-" }}</td>
+                        <td>{{ supplier.email }}</td>
+                        <td>{{ supplier.phone }}</td>
+                        <td>{{ supplier.address|truncatechars:50 }}</td>
+                        <td>{{ supplier.payment_terms|default:"-" }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="editSupplier({{ supplier.id }})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="createPurchaseOrder({{ supplier.id }})">
+                                <i class="fas fa-file-invoice"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">
+                            No suppliers found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Supplier Modal -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Supplier</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSupplierForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label>Supplier Name</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Contact Person</label>
+                        <input type="text" class="form-control" name="contact_person">
+                    </div>
+                    <div class="mb-3">
+                        <label>Email</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Phone</label>
+                        <input type="text" class="form-control" name="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Address</label>
+                        <textarea class="form-control" name="address" rows="2" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Payment Terms</label>
+                        <input type="text" class="form-control" name="payment_terms" placeholder="e.g., Net 30">
+                    </div>
+                    <div class="mb-3">
+                        <label>Tax ID</label>
+                        <input type="text" class="form-control" name="tax_id">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveSupplier()">Save Supplier</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function saveSupplier() {
+    var formData = {
+        name: $('input[name="name"]').val(),
+        contact_person: $('input[name="contact_person"]').val(),
+        email: $('input[name="email"]').val(),
+        phone: $('input[name="phone"]').val(),
+        address: $('textarea[name="address"]').val(),
+        payment_terms: $('input[name="payment_terms"]').val(),
+        tax_id: $('input[name="tax_id"]').val()
+    };
+
+    $.ajax({
+        url: '/api/suppliers/',
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        data: JSON.stringify(formData),
+        contentType: 'application/json',
+        success: function(response) {
+            $('#addSupplierModal').modal('hide');
+            location.reload();
+        },
+        error: function(xhr) {
+            alert('Error saving supplier: ' + xhr.responseJSON);
+        }
+    });
+}
+
+function editSupplier(id) {
+    // Implement edit functionality
+    alert('Edit functionality coming soon!');
+}
+
+function createPurchaseOrder(id) {
+    // Implement PO creation
+    alert('Purchase order creation coming soon!');
+}
+</script>
+{% endblock %}

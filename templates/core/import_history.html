@@ -1,0 +1,95 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Import History{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Import History</h2>
+        <a href="{% url 'import_data' %}" class="btn btn-primary">
+            <i class="fas fa-upload"></i> New Import
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>File Name</th>
+                            <th>Status</th>
+                            <th>Records</th>
+                            <th>Success</th>
+                            <th>Failed</th>
+                            <th>Imported By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for import in imports %}
+                        <tr>
+                            <td>{{ import.created_at|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ import.get_import_type_display }}</span>
+                            </td>
+                            <td>{{ import.file_name }}</td>
+                            <td>
+                                <span class="badge bg-{% if import.status == 'success' %}success{% elif import.status == 'failed' %}danger{% else %}warning{% endif %}">
+                                    {{ import.status|title }}
+                                </span>
+                            </td>
+                            <td>{{ import.total_records }}</td>
+                            <td class="text-success">{{ import.success_records }}</td>
+                            <td class="text-danger">{{ import.failed_records }}</td>
+                            <td>{{ import.imported_by.username }}</td>
+                            <td>
+                                {% if import.error_log %}
+                                <button class="btn btn-sm btn-warning" onclick="showErrors('{{ import.id }}')">
+                                    <i class="fas fa-exclamation-triangle"></i> View Errors
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">
+                                No import history found
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Errors</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="errorLog" style="max-height: 400px; overflow-y: auto;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showErrors(importId) {
+    // This would need an API endpoint to get error logs
+    // For now, we'll use a static example
+    alert('Error log functionality coming soon!');
+}
+</script>
+{% endblock %}

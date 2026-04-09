@@ -1,0 +1,139 @@
+import logging
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
+
+def safe_context_processor(func):
+    """Decorator to safely handle errors in context processors"""
+    def wrapper(request):
+        try:
+            return func(request)
+        except Exception as e:
+            logger.error(f"Error in context processor {func.__name__}: {e}")
+            return {}
+    return wrapper
+
+
+@safe_context_processor
+def notifications(request):
+    """
+    Context processor to add notification data to all templates
+    """
+    context = {
+        'unread_notifications_count': 0,
+        'recent_notifications': [],
+    }
+    
+    if hasattr(request, 'user') and request.user.is_authenticated:
+        try:
+            from .models import Notification
+            
+            # Check if the Notification table exists
+            from django.db import connection
+            if 'core_notification' in connection.introspection.table_names():
+                unread_count = Notification.objects.filter(
+                    recipient_user=request.user,
+                    is_read=False
+                ).count()
+                
+                recent_notifications = Notification.objects.filter(
+                    recipient_user=request.user
+                ).order_by('-created_at')[:5]
+                
+                context = {
+                    'unread_notifications_count': unread_count,
+                    'recent_notifications': recent_notifications,
+                }
+        except Exception as e:
+            logger.warning(f"Could not load notifications: {e}")
+    
+    return context
+
+
+@safe_context_processor
+def products_context(request):
+    """
+    Context processor to add products to all templates for the New Order modal
+    """
+    context = {
+        'products': [],
+        'customers': [],  # Also add customers for the order modal
+    }
+    
+    if hasattr(request, 'user') and request.user.is_authenticated:
+        try:
+            from .models import Product, Customer
+            
+            # For Create New Order modal: show all products so admin can order any product
+            products = Product.objects.all().order_by('name')[:100]
+            
+            # Get customers for the order modal
+            customers = Customer.objects.all().order_by('name')[:50]
+            
+            context = {
+                'products': products,
+                'customers': customers,
+            }
+        except Exception as e:
+            logger.warning(f"Could not load products/customers: {e}")
+    
+    return context
+
+
+@safe_context_processor
+def user_role(request):
+    """
+    Context processor for user role information
+    """
+    context = {
+        'is_admin': False,
+        'is_manager': False,
+        'is_staff': False,
+        'is_cashier': False,
+        'is_production_admin': False,
+        'user_role': 'guest',
+        'user_display_name': 'Guest',
+    }
+    
+    if hasattr(request, 'user') and request.user.is_authenticated:
+        try:
+            # Basic user info
+            context['user_display_name'] = request.user.get_full_name() or request.user.username
+            
+            # Check for profile
+            if hasattr(request.user, 'profile'):
+                profile = request.user.profile
+                role = profile.role if profile.role else 'staff'
+                
+                context.update({
+                    'is_admin': role == 'admin',
+                    'is_manager': role == 'manager',
+                    'is_cashier': role == 'cashier',
+                    'is_production_admin': role == 'production_admin',
+                    'is_staff': role in ['staff', 'cashier', 'production_admin'],
+                    'user_role': role,
+                })
+            else:
+                # Fallback for users without profile
+                context.update({
+                    'is_admin': request.user.is_superuser,
+                    'is_staff': request.user.is_staff,
+                    'user_role': 'superuser' if request.user.is_superuser else 'staff' if request.user.is_staff else 'user',
+                })
+        except Exception as e:
+            logger.warning(f"Could not determine user role: {e}")
+    
+    return context
+
+
+@safe_context_processor
+def site_settings(request):
+    """
+    Context processor for site-wide settings
+    """
+    return {
+        'site_name': getattr(settings, 'SITE_NAME', 'Pandeli System'),
+        'site_version': getattr(settings, 'SITE_VERSION', '1.0.0'),
+        'debug': settings.DEBUG,
+        'current_year': 2026,
+    }

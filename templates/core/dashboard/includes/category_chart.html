@@ -1,0 +1,28 @@
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-chart-pie me-2 text-info"></i>
+            Sales by Category
+        </h5>
+        <div class="d-flex align-items-center">
+            <select class="form-select form-select-sm w-auto me-2" id="categoryPeriod" onchange="CategoryChartManager.changePeriod(this.value)">
+                <option value="7">7 Days</option>
+                <option value="30" selected>30 Days</option>
+                <option value="90">90 Days</option>
+            </select>
+            <select class="form-select form-select-sm w-auto" id="categoryChartType" onchange="CategoryChartManager.toggleType()">
+                <option value="sales">Sales (&#8369;)</option>
+                <option value="quantity">Quantity</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="chart-container" style="min-height: 280px; position: relative;">
+            <canvas id="categoryBarChart"></canvas>
+        </div>
+        <div id="categoryNoData" class="text-center py-5 text-muted" style="display: none;">
+            <i class="fas fa-chart-bar fa-3x mb-3"></i>
+            <p>No sales data available for the selected period</p>
+        </div>
+    </div>
+</div>

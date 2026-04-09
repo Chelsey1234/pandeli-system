@@ -1,0 +1,543 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Point of Sale (POS){% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Left Side - Products Grid -->
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-box"></i> Products</h5>
+                    <div class="d-flex">
+                        <input type="text" id="productSearch" class="form-control form-control-sm me-2" placeholder="Search products..." style="width: 200px;">
+                        <select id="categoryFilter" class="form-control form-control-sm" style="width: 150px;">
+                            <option value="">All Categories</option>
+                            {% for value, label in categories %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="sortFilter" class="form-control form-control-sm ms-2" style="width: 160px;">
+                            <option value="name_asc">Sort: Name (A-Z)</option>
+                            <option value="name_desc">Sort: Name (Z-A)</option>
+                            <option value="price_asc">Sort: Price (Low)</option>
+                            <option value="price_desc">Sort: Price (High)</option>
+                            <option value="stock_desc">Sort: Availability</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="productGrid">
+                        {% for product in products %}
+                        <div class="col-md-3 col-sm-4 mb-3 product-item"
+                             data-category="{{ product.category }}"
+                             data-name="{{ product.name|lower }}"
+                             data-code="{{ product.code|lower }}"
+                             data-price="{{ product.price }}"
+                             data-stock="{{ product.stock }}">
+                            <div class="card product-card h-100 {% if product.stock < 5 %}border-warning{% endif %}"
+                                 {% if product.stock <= 0 %}style="opacity:0.55; cursor:not-allowed;"{% endif %}
+                                 data-product-id="{{ product.id }}"
+                                 data-product-name="{{ product.name|escapejs }}"
+                                 data-product-price="{{ product.price }}"
+                                 data-product-stock="{{ product.stock }}">
+                                <div class="card-body text-center p-2">
+                                    {% if product.image %}
+                                        <img src="{{ product.image.url }}" class="img-fluid mb-2" style="height: 60px; object-fit: contain;" alt="{{ product.name }}">
+                                    {% else %}
+                                        <i class="fas fa-box fa-3x mb-2 text-secondary"></i>
+                                    {% endif %}
+                                    <h6 class="card-title mb-1">{{ product.name|truncatechars:20 }}</h6>
+                                    <p class="card-text">
+                                        <strong>&#8369;{{ product.price|floatformat:2 }}</strong><br>
+                                        <small class="text-muted">Stock: {{ product.stock }}</small>
+                                    </p>
+                                    {% if product.stock < 5 %}
+                                        <span class="badge bg-warning position-absolute top-0 end-0">Low Stock</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center">
+                            <p class="text-muted">No products available</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Cart -->
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart"></i> Current Sale</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Customer Selection -->
+                    <div class="mb-3">
+                        <label for="customerSelect">Customer (Optional)</label>
+                        <select class="form-control" id="customerSelect">
+                            <option value="">Walk-in Customer</option>
+                            {% for customer in customers %}
+                                <option value="{{ customer.id }}">{{ customer.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Cart Items -->
+                    <div class="cart-items mb-3" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Price</th>
+                                    <th>Total</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cartItems">
+                                <!-- Cart items will be added here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Cart Summary -->
+                    <div class="cart-summary mb-3">
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Subtotal:</th>
+                                <td class="text-end" id="subtotal">&#8369;0.00</td>
+                            </tr>
+                            <tr>
+                                <th>
+                                    Tax (%):
+                                    <input type="number" id="taxPercent" class="form-control form-control-sm d-inline-block ms-2"
+                                           style="width: 80px;" min="0" max="100" step="0.01" value="0">
+                                </th>
+                                <td class="text-end" id="taxAmount">&#8369;0.00</td>
+                            </tr>
+                            <tr>
+                                <th>
+                                    Discount:
+                                    <input type="number" id="discountAmount" class="form-control form-control-sm d-inline-block ms-2"
+                                           style="width: 120px;" min="0" step="0.01" value="0">
+                                </th>
+                                <td class="text-end" id="discountDisplay">&#8369;0.00</td>
+                            </tr>
+                            <tr>
+                                <th>Total:</th>
+                                <td class="text-end text-primary" id="total">&#8369;0.00</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <div class="mb-3">
+                        <label>Payment Method</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="paymentMethod" id="paymentCash" value="cash" checked>
+                            <label class="btn btn-outline-primary" for="paymentCash">Cash</label>
+                            
+                            <input type="radio" class="btn-check" name="paymentMethod" id="paymentGcash" value="gcash">
+                            <label class="btn btn-outline-primary" for="paymentGcash">Gcash</label>
+                        </div>
+                    </div>
+
+                    <!-- Cash Received -->
+                    <div class="mb-3" id="cashSection">
+                        <label for="amountReceived">Amount Received (Cash)</label>
+                        <input type="number" class="form-control" id="amountReceived" min="0" step="0.01" placeholder="0.00">
+                        <small class="text-muted">Change: <span id="changeAmount">₱0.00</span></small>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="mb-3">
+                        <label for="orderNotes">Notes</label>
+                        <textarea class="form-control" id="orderNotes" rows="2"></textarea>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success btn-lg" onclick="processPayment()">
+                            <i class="fas fa-credit-card"></i> Charge
+                        </button>
+                        <button class="btn btn-warning" onclick="clearCart()">
+                            <i class="fas fa-trash"></i> Clear Cart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Recent Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Time</th>
+                                    <th>Customer</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td>{{ order.order_number }}</td>
+                                    <td>{{ order.created_at|date:"H:i" }}</td>
+                                    <td>{{ order.customer.name|default:"Walk-in" }}</td>
+                                    <td>{{ order.items.count }}</td>
+                                    <td>&#8369;{{ order.total|floatformat:2 }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info receipt-btn" data-order-id="{{ order.id }}">
+                                            <i class="fas fa-print"></i> Receipt
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No recent transactions</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.product-card {
+    cursor: pointer;
+    transition: transform 0.2s;
+    border: 2px solid transparent;
+}
+.product-card:hover {
+    transform: scale(1.05);
+    border-color: #007bff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.product-card.selected {
+    border-color: #28a745;
+    background-color: #f0fff0;
+}
+.cart-items table {
+    font-size: 0.9rem;
+}
+.cart-items tbody tr td {
+    vertical-align: middle;
+}
+</style>
+
+<script>
+let cart = [];
+let lastTotals = { subtotal: 0, tax: 0, discount: 0, total: 0, change: 0 };
+
+function addToCart(productId, productName, price, stock) {
+    if (parseInt(stock, 10) <= 0) {
+        alert('This item is currently out of stock.');
+        return;
+    }
+    // Check if product already in cart
+    const existingItem = cart.find(item => item.id === productId);
+    
+    if (existingItem) {
+        if (existingItem.quantity < stock) {
+            existingItem.quantity += 1;
+        } else {
+            alert('Maximum stock reached!');
+            return;
+        }
+    } else {
+        cart.push({
+            id: productId,
+            name: productName,
+            price: price,
+            quantity: 1,
+            stock: stock
+        });
+    }
+    
+    updateCartDisplay();
+}
+
+function updateCartDisplay() {
+    const cartBody = document.getElementById('cartItems');
+    let subtotal = 0;
+    let html = '';
+    
+    cart.forEach((item, index) => {
+        const itemTotal = item.price * item.quantity;
+        subtotal += itemTotal;
+        
+        html += `
+            <tr>
+                <td>${item.name}</td>
+                <td>
+                    <div class="d-flex align-items-center gap-1">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQty(${index}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>−</button>
+                        <span style="min-width: 26px; text-align:center;">${item.quantity}</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQty(${index}, 1)" ${item.quantity >= item.stock ? 'disabled' : ''}>+</button>
+                    </div>
+                </td>
+                <td>&#8369;${item.price.toFixed(2)}</td>
+                <td>&#8369;${itemTotal.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="removeFromCart(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    cartBody.innerHTML = html || '<tr><td colspan="5" class="text-center">Cart is empty</td></tr>';
+
+    updateTotals(subtotal);
+}
+
+function changeQty(index, delta) {
+    const nextQty = (cart[index]?.quantity || 1) + delta;
+    if (!cart[index]) return;
+    if (nextQty < 1) return;
+    if (nextQty > cart[index].stock) {
+        alert('Maximum stock reached!');
+        return;
+    }
+    cart[index].quantity = nextQty;
+    updateCartDisplay();
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartDisplay();
+}
+
+function clearCart() {
+    cart = [];
+    updateCartDisplay();
+}
+
+function getPaymentMethod() {
+    return document.querySelector('input[name="paymentMethod"]:checked')?.value || 'cash';
+}
+
+function updateCashUI() {
+    const method = getPaymentMethod();
+    const cashSection = document.getElementById('cashSection');
+    cashSection.style.display = method === 'cash' ? '' : 'none';
+    if (method !== 'cash') {
+        document.getElementById('amountReceived').value = '';
+        document.getElementById('changeAmount').textContent = '₱0.00';
+    }
+}
+
+function updateTotals(subtotalOverride = null) {
+    const subtotal = subtotalOverride !== null ? subtotalOverride : cart.reduce((s, i) => s + (i.price * i.quantity), 0);
+    const taxPercent = parseFloat(document.getElementById('taxPercent').value || '0') || 0;
+    const discount = parseFloat(document.getElementById('discountAmount').value || '0') || 0;
+    const safeTaxPercent = Math.min(100, Math.max(0, taxPercent));
+    const tax = subtotal * (safeTaxPercent / 100);
+    const total = Math.max(0, subtotal + tax - Math.max(0, discount));
+
+    document.getElementById('subtotal').textContent = `₱${subtotal.toFixed(2)}`;
+    document.getElementById('taxAmount').textContent = `₱${tax.toFixed(2)}`;
+    document.getElementById('discountDisplay').textContent = `₱${Math.max(0, discount).toFixed(2)}`;
+    document.getElementById('total').textContent = `₱${total.toFixed(2)}`;
+
+    const method = getPaymentMethod();
+    if (method === 'cash') {
+        const received = parseFloat(document.getElementById('amountReceived').value || '0') || 0;
+        const change = Math.max(0, received - total);
+        document.getElementById('changeAmount').textContent = `₱${change.toFixed(2)}`;
+        lastTotals = { subtotal, tax, discount: Math.max(0, discount), total, change };
+    } else {
+        lastTotals = { subtotal, tax, discount: Math.max(0, discount), total, change: 0 };
+    }
+}
+
+function processPayment() {
+    if (cart.length === 0) {
+        alert('Cart is empty!');
+        return;
+    }
+
+    updateTotals();
+    const payment_method = getPaymentMethod();
+    const amount_received = payment_method === 'cash'
+        ? (parseFloat(document.getElementById('amountReceived').value || '0') || 0)
+        : lastTotals.total;
+
+    if (payment_method === 'cash' && amount_received < lastTotals.total) {
+        alert('Insufficient cash amount received!');
+        return;
+    }
+    
+    const orderData = {
+        items: cart.map(item => ({
+            product_id: item.id,
+            quantity: item.quantity
+        })),
+        customer_id: document.getElementById('customerSelect').value || null,
+        payment_method,
+        tax_percent: parseFloat(document.getElementById('taxPercent').value || '0') || 0,
+        discount: parseFloat(document.getElementById('discountAmount').value || '0') || 0,
+        amount_received,
+        notes: document.getElementById('orderNotes').value
+    };
+    
+    fetch('{% url "pos_create_order" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(orderData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Order completed! Order #: ${data.order_number}`);
+            const receiptUrlTemplate = "{% url 'pos_receipt' 0 %}";
+            window.location.href = receiptUrlTemplate.replace('/0/', `/${data.order_id}/`);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error processing payment');
+    });
+}
+
+function printReceipt(orderId) {
+    const receiptUrlTemplate = "{% url 'pos_receipt' 0 %}";
+    const url = receiptUrlTemplate.replace('/0/', `/${orderId}/`);
+    window.open(url, '_blank');
+}
+
+document.querySelectorAll('.receipt-btn').forEach(btn => btn.addEventListener('click', function() {
+    const orderId = parseInt(this.dataset.orderId || '0', 10);
+    if (!orderId) return;
+    printReceipt(orderId);
+}));
+
+// Click-to-add (no inline onclick)
+document.getElementById('productGrid').addEventListener('click', function(e) {
+    const card = e.target.closest('.product-card');
+    if (!card) return;
+    const id = parseInt(card.dataset.productId || '0', 10);
+    const name = card.dataset.productName || '';
+    const price = parseFloat(card.dataset.productPrice || '0') || 0;
+    const stock = parseInt(card.dataset.productStock || '0', 10) || 0;
+    if (!id) return;
+    if (stock <= 0) {
+        alert('This item is currently out of stock.');
+        return;
+    }
+    addToCart(id, name, price, stock);
+});
+
+// Search functionality
+document.getElementById('productSearch').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const products = document.querySelectorAll('.product-item');
+    
+    products.forEach(product => {
+        const name = product.dataset.name;
+        const code = product.dataset.code;
+        if (name.includes(searchTerm) || code.includes(searchTerm)) {
+            product.style.display = '';
+        } else {
+            product.style.display = 'none';
+        }
+    });
+});
+
+document.getElementById('categoryFilter').addEventListener('change', function(e) {
+    const category = e.target.value;
+    const products = document.querySelectorAll('.product-item');
+    
+    products.forEach(product => {
+        if (!category || product.dataset.category === category) {
+            product.style.display = '';
+        } else {
+            product.style.display = 'none';
+        }
+    });
+});
+
+document.getElementById('sortFilter').addEventListener('change', function(e) {
+    const sort = e.target.value;
+    const grid = document.getElementById('productGrid');
+    const items = Array.from(grid.querySelectorAll('.product-item'));
+
+    const cmp = {
+        name_asc: (a, b) => (a.dataset.name || '').localeCompare(b.dataset.name || ''),
+        name_desc: (a, b) => (b.dataset.name || '').localeCompare(a.dataset.name || ''),
+        price_asc: (a, b) => (parseFloat(a.dataset.price || '0') - parseFloat(b.dataset.price || '0')),
+        price_desc: (a, b) => (parseFloat(b.dataset.price || '0') - parseFloat(a.dataset.price || '0')),
+        stock_desc: (a, b) => (parseInt(b.dataset.stock || '0', 10) - parseInt(a.dataset.stock || '0', 10)),
+    }[sort] || ((a, b) => 0);
+
+    items.sort(cmp);
+    items.forEach(el => grid.appendChild(el));
+});
+
+// Barcode-friendly behavior: when scan ends with Enter, auto-add exact match by code if found
+document.getElementById('productSearch').addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    const term = (e.target.value || '').trim().toLowerCase();
+    if (!term) return;
+    const products = Array.from(document.querySelectorAll('.product-item'));
+    const exact = products.filter(p => (p.dataset.code || '') === term && p.style.display !== 'none');
+    if (exact.length === 1) {
+        exact[0].querySelector('.product-card')?.click();
+        e.target.select();
+    }
+});
+
+document.getElementById('taxPercent').addEventListener('input', () => updateTotals());
+document.getElementById('discountAmount').addEventListener('input', () => updateTotals());
+document.getElementById('amountReceived').addEventListener('input', () => updateTotals());
+document.querySelectorAll('input[name="paymentMethod"]').forEach(r => r.addEventListener('change', () => {
+    updateCashUI();
+    updateTotals();
+}));
+
+updateCashUI();
+updateCartDisplay();
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
