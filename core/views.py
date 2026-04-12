@@ -255,8 +255,15 @@ def order_list(request):
 @login_required
 def order_detail(request, pk):
     order = get_object_or_404(Order, pk=pk)
+    # Safely get customer — customer_id may be a UUID string from mobile app
+    customer = None
+    try:
+        customer = order.customer
+    except Exception:
+        pass
     context = {
         'order': order,
+        'customer': customer,
     }
     return render(request, 'core/order_detail.html', context)
 

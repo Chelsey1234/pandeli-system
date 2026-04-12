@@ -79,31 +79,31 @@
                     <h5>Customer Information</h5>
                 </div>
                 <div class="card-body">
-                    {% if order.customer %}
+                    {% if customer %}
                         <table class="table table-borderless">
                             <tr>
                                 <th>Name:</th>
-                                <td>{{ order.customer.name }}</td>
+                                <td>{{ customer.name }}</td>
                             </tr>
                             <tr>
                                 <th>Email:</th>
-                                <td>{{ order.customer.email }}</td>
+                                <td>{{ customer.email }}</td>
                             </tr>
                             <tr>
                                 <th>Phone:</th>
-                                <td>{{ order.customer.phone }}</td>
+                                <td>{{ customer.phone }}</td>
                             </tr>
                             <tr>
                                 <th>Address:</th>
-                                <td>{{ order.customer.address }}</td>
+                                <td>{{ customer.address }}</td>
                             </tr>
                             <tr>
                                 <th>Loyalty Points:</th>
-                                <td>{{ order.customer.loyalty_points }}</td>
+                                <td>{{ customer.loyalty_points }}</td>
                             </tr>
                         </table>
                     {% else %}
-                        <p class="text-muted">Walk-in Customer</p>
+                        <p class="text-muted">Online / Walk-in Customer</p>
                     {% endif %}
                 </div>
             </div>
