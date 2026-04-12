@@ -325,15 +325,18 @@ def confirm_order(request, pk):
             order.status = 'confirmed'
             order.save()
             
-            # Create notification
-            if order.customer and order.customer.user:
-                Notification.objects.create(
-                    title=f"Order #{order.order_number} Confirmed",
-                    message=f"Your order has been confirmed and is being prepared.",
-                    notification_type='order',
-                    recipient_type='customer',
-                    recipient_user=order.customer.user
-                )
+            # Create notification — safely handle UUID customer_id from mobile app
+            try:
+                if order.customer and order.customer.user:
+                    Notification.objects.create(
+                        title=f"Order #{order.order_number} Confirmed",
+                        message=f"Your order has been confirmed and is being prepared.",
+                        notification_type='order',
+                        recipient_type='customer',
+                        recipient_user=order.customer.user
+                    )
+            except Exception:
+                pass
             
             messages.success(request, f'Order #{order.order_number} confirmed successfully.')
     
@@ -500,9 +503,13 @@ def export_sales_report(request):
     row = 2
     for order in orders:
         items_count = order.items.count()
+        try:
+            customer_name = order.customer.name if order.customer else 'Walk-in'
+        except Exception:
+            customer_name = 'Walk-in'
         ws1.cell(row=row, column=1, value=order.created_at.strftime('%Y-%m-%d'))
         ws1.cell(row=row, column=2, value=order.order_number)
-        ws1.cell(row=row, column=3, value=order.customer.name if order.customer else 'Walk-in')
+        ws1.cell(row=row, column=3, value=customer_name)
         ws1.cell(row=row, column=4, value=items_count)
         ws1.cell(row=row, column=5, value=float(order.subtotal))
         ws1.cell(row=row, column=6, value=float(order.tax))
@@ -923,9 +930,13 @@ def export_data(request):
         headers = ['Order Number', 'Customer', 'Date', 'Items', 'Subtotal', 'Tax', 'Discount', 'Total', 'Status']
         data = []
         for order in Order.objects.all().select_related('customer'):
+            try:
+                customer_name = order.customer.name if order.customer else 'Walk-in'
+            except Exception:
+                customer_name = 'Walk-in'
             data.append((
                 order.order_number,
-                order.customer.name if order.customer else 'Walk-in',
+                customer_name,
                 order.created_at.strftime('%Y-%m-%d %H:%M'),
                 order.items.count(),
                 order.subtotal,

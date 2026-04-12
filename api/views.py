@@ -129,14 +129,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.save()
             
             # Create notification
-            if order.customer and order.customer.user:
-                Notification.objects.create(
-                    title=f'Order {order.order_number} Status Updated',
-                    message=f'Your order is now: {order.get_status_display()}',
-                    notification_type='order',
-                    recipient_user=order.customer.user,
-                    link=f'/orders/{order.id}'
-                )
+            try:
+                if order.customer and order.customer.user:
+                    Notification.objects.create(
+                        title=f'Order {order.order_number} Status Updated',
+                        message=f'Your order is now: {order.get_status_display()}',
+                        notification_type='order',
+                        recipient_user=order.customer.user,
+                        link=f'/orders/{order.id}'
+                    )
+            except Exception:
+                pass
             
             return Response({'status': 'updated'})
         return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)

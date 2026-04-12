@@ -305,14 +305,17 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.save()
             
             # Create notification
-            if order.customer and order.customer.user:
-                Notification.objects.create(
-                    title=f"Order #{order.order_number} Status Updated",
-                    message=f"Your order status is now: {order.get_status_display()}",
-                    notification_type='order',
-                    recipient_type='customer',
-                    recipient_user=order.customer.user
-                )
+            try:
+                if order.customer and order.customer.user:
+                    Notification.objects.create(
+                        title=f"Order #{order.order_number} Status Updated",
+                        message=f"Your order status is now: {order.get_status_display()}",
+                        notification_type='order',
+                        recipient_type='customer',
+                        recipient_user=order.customer.user
+                    )
+            except Exception:
+                pass
             
             serializer = self.get_serializer(order)
             return Response(serializer.data)
