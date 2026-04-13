@@ -100,56 +100,68 @@ def is_admin_or_manager(user):
 
 @login_required
 def dashboard(request):
-    # Get date ranges
     today = timezone.now().date()
     start_of_month = today.replace(day=1)
-    start_of_week = today - timedelta(days=today.weekday())
-    
-    # Sales data
-    daily_sales = Order.objects.filter(
-        created_at__date=today,
-    ).aggregate(total=Sum('total'))['total'] or 0
-    
+    week_start = today - timedelta(days=6)
+
+    # Run all aggregates in as few queries as possible
+    from django.db.models import Count
+
+    # Single query for today's stats
+    today_stats = Order.objects.filter(created_at__date=today).aggregate(
+        daily_sales=Sum('total'),
+        total_orders=Count('id'),
+    )
+    daily_sales = today_stats['daily_sales'] or 0
+    total_orders = today_stats['total_orders'] or 0
+
     monthly_sales = Order.objects.filter(
         created_at__date__gte=start_of_month,
     ).aggregate(total=Sum('total'))['total'] or 0
-    
-    # Orders count
-    total_orders = Order.objects.filter(created_at__date=today).count()
+
     pending_orders = Order.objects.filter(status='pending').count()
-    
-    # Low stock alert
+
+    # Low stock
     low_stock_products = Product.objects.filter(
         stock__lte=F('low_stock_threshold'),
         is_available=True
-    )[:10]
-    
-    # Best selling products
+    ).only('name', 'stock', 'low_stock_threshold')[:10]
+
+    # Best sellers
     best_sellers = OrderItem.objects.values(
         'product__name', 'product__id'
     ).annotate(
         total_quantity=Sum('quantity'),
         total_sales=Sum('subtotal')
     ).order_by('-total_quantity')[:5]
-    
-    # Sales graph data (last 7 days)
+
+    # Sales graph — single query for last 7 days
+    sales_by_day = dict(
+        Order.objects.filter(created_at__date__gte=week_start)
+        .annotate(day=TruncDay('created_at'))
+        .values('day')
+        .annotate(total=Sum('total'))
+        .values_list('day__date', 'total')
+    )
     last_7_days = []
     sales_data = []
     for i in range(6, -1, -1):
         date = today - timedelta(days=i)
         last_7_days.append(date.strftime('%Y-%m-%d'))
-        daily_total = Order.objects.filter(
-            created_at__date=date,
-        ).aggregate(total=Sum('total'))['total'] or 0
-        sales_data.append(float(daily_total))
-    
+        sales_data.append(float(sales_by_day.get(date, 0)))
+
     # Recent orders
-    recent_orders = Order.objects.select_related('customer').order_by('-created_at')[:5]
-    
-    # Get products and customers for the New Order modal (all products so admin can create orders)
-    products = Product.objects.all().order_by('name')[:100]
-    customers = Customer.objects.all().order_by('name')[:50]
-    
+    recent_orders = Order.objects.select_related('customer').only(
+        'order_number', 'order_type', 'status', 'total', 'created_at',
+        'customer__name'
+    ).order_by('-created_at')[:5]
+
+    # Products and customers for modal
+    products = Product.objects.filter(is_archived=False).only(
+        'id', 'name', 'price', 'stock', 'category'
+    ).order_by('name')[:100]
+    customers = Customer.objects.only('id', 'name').order_by('name')[:50]
+
     context = {
         'daily_sales': daily_sales,
         'monthly_sales': monthly_sales,
@@ -160,10 +172,10 @@ def dashboard(request):
         'recent_orders': recent_orders,
         'sales_labels': json.dumps(last_7_days),
         'sales_data': json.dumps(sales_data),
-        'products': products,  # Add this
-        'customers': customers,  # Add this
+        'products': products,
+        'customers': customers,
     }
-    
+
     return render(request, 'core/dashboard.html', context)
 
 # ========== PRODUCT VIEWS ==========
