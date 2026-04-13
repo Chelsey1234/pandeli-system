@@ -136,19 +136,24 @@ def dashboard(request):
     ).order_by('-total_quantity')[:5]
 
     # Sales graph — single query for last 7 days
-    sales_by_day = dict(
+    sales_qs = (
         Order.objects.filter(created_at__date__gte=week_start)
         .annotate(day=TruncDay('created_at'))
         .values('day')
         .annotate(total=Sum('total'))
-        .values_list('day__date', 'total')
+        .order_by('day')
     )
+    sales_by_day = {}
+    for row in sales_qs:
+        if row['day']:
+            sales_by_day[row['day'].date()] = float(row['total'] or 0)
+
     last_7_days = []
     sales_data = []
     for i in range(6, -1, -1):
         date = today - timedelta(days=i)
         last_7_days.append(date.strftime('%Y-%m-%d'))
-        sales_data.append(float(sales_by_day.get(date, 0)))
+        sales_data.append(sales_by_day.get(date, 0))
 
     # Recent orders
     recent_orders = Order.objects.select_related('customer').only(
