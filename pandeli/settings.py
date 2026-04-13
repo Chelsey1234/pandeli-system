@@ -110,12 +110,14 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'https://pandeliwebapp.com',
     'https://www.pandeliwebapp.com',
+    'https://pandeliwebsapp.com',
+    'https://www.pandeliwebsapp.com',
 ]
 
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 86400
 
