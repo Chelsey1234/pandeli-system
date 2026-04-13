@@ -632,26 +632,33 @@ def forecast(request):
 def run_forecast(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
-        days = int(request.POST.get('days', 30))
+        days = min(int(request.POST.get('days', 30)), 30)  # cap at 30 days
 
         created_count = 0
-        if product_id:
-            product = get_object_or_404(Product, id=product_id)
-            result = generate_sales_forecast(product, days)
-            created_count = len(result or [])
-        else:
-            # Run forecast for all products
-            products = Product.objects.all()
-            for product in products:
+        try:
+            if product_id:
+                product = get_object_or_404(Product, id=product_id)
                 result = generate_sales_forecast(product, days)
-                created_count += len(result or [])
+                created_count = len(result or [])
+            else:
+                # Limit to 20 products max to avoid timeout
+                products = Product.objects.filter(is_archived=False)[:20]
+                for product in products:
+                    try:
+                        result = generate_sales_forecast(product, days)
+                        created_count += len(result or [])
+                    except Exception:
+                        continue
+        except Exception as e:
+            messages.error(request, f'Forecast error: {str(e)}')
+            return redirect('forecast')
 
         if created_count > 0:
             messages.success(request, f'Forecast generated successfully! ({created_count} forecast rows)')
         else:
             messages.warning(request, 'No forecast rows were generated. Add order history first, then try again.')
         return redirect('forecast')
-    
+
     return redirect('forecast')
 
 # ========== IMPORT/EXPORT VIEWS ==========
