@@ -649,20 +649,20 @@ def forecast(request):
 def run_forecast(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
-        days = min(int(request.POST.get('days', 30)), 30)  # cap at 30 days
+        days = min(int(request.POST.get('days', 14)), 14)  # cap at 14 days
 
         created_count = 0
         try:
             if product_id:
                 product = get_object_or_404(Product, id=product_id)
-                result = generate_sales_forecast(product, days)
+                result = generate_simple_forecast(product, days)
                 created_count = len(result or [])
             else:
-                # Limit to 20 products max to avoid timeout
-                products = Product.objects.filter(is_archived=False)[:20]
+                # Limit to 10 products, use simple forecast only (no Prophet/ARIMA)
+                products = Product.objects.filter(is_archived=False).order_by('-updated_at')[:10]
                 for product in products:
                     try:
-                        result = generate_sales_forecast(product, days)
+                        result = generate_simple_forecast(product, days)
                         created_count += len(result or [])
                     except Exception:
                         continue
@@ -671,9 +671,9 @@ def run_forecast(request):
             return redirect('forecast')
 
         if created_count > 0:
-            messages.success(request, f'Forecast generated successfully! ({created_count} forecast rows)')
+            messages.success(request, f'Forecast generated! ({created_count} rows)')
         else:
-            messages.warning(request, 'No forecast rows were generated. Add order history first, then try again.')
+            messages.warning(request, 'No forecast rows generated. Add order history first.')
         return redirect('forecast')
 
     return redirect('forecast')
