@@ -189,7 +189,7 @@ def dashboard(request):
 def product_list(request):
     products = Product.objects.filter(is_archived=False)
     archived_products = Product.objects.filter(is_archived=True).order_by('-archived_at', '-updated_at')
-    categories = Category.objects.all()
+    categories = Product.CATEGORY_CHOICES
     raw_materials = RawMaterial.objects.all().order_by('name')
     
     # Filter by category
