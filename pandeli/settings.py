@@ -6,7 +6,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=lambda v: [s.strip() for s in v.split(',')])
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+
+# Ensure Railway domains are always allowed
+railway_hosts = [
+    'web-production-9c84e.up.railway.app',
+    '*.up.railway.app',
+    'pandeliwebapp.com',
+    'www.pandeliwebapp.com',
+    'pandeliwebsapp.com',
+    'www.pandeliwebsapp.com',
+]
+
+# Add Railway hosts if not already in ALLOWED_HOSTS
+if ALLOWED_HOSTS != ['*']:
+    ALLOWED_HOSTS.extend([host for host in railway_hosts if host not in ALLOWED_HOSTS])
+else:
+    ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
