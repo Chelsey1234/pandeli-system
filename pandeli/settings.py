@@ -121,6 +121,8 @@ CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = False
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_PATH = '/'
 CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://localhost:8000',
@@ -128,6 +130,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://www.pandeliwebapp.com',
     'https://pandeliwebsapp.com',
     'https://www.pandeliwebsapp.com',
+    'https://web-production-9c84e.up.railway.app',
+    'https://*.up.railway.app',
 ]
 
 SESSION_COOKIE_SECURE = False
