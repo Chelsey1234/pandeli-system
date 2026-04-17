@@ -37,6 +37,7 @@ class LoginRequiredMiddleware:
             '/admin/login/',
             '/static/',
             '/media/',
+            '/privacy-policy/',  # Add privacy policy directly
         ]
         
         # Add any additional public paths
