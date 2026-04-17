@@ -98,6 +98,7 @@ urlpatterns = [
     # ------------------------------------------
     path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
     path('privacy_policy.php', views.privacy_policy, name='privacy_policy_php'),
+    path('privacy_policy.php/', views.privacy_policy, name='privacy_policy_php_slash'),
     
     # ------------------------------------------
     # API (includes all router URLs)
