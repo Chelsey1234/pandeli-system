@@ -198,6 +198,7 @@ PUBLIC_PATHS = [
     '/media/',
     '/admin/login/',
     '/privacy-policy/',
+    '/privacy_policy.php',
 ]
 
 IMPORT_EXPORT_USE_TRANSACTIONS = True

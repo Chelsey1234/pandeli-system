@@ -97,6 +97,7 @@ urlpatterns = [
     # PUBLIC PAGES (no login required)
     # ------------------------------------------
     path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
+    path('privacy_policy.php', views.privacy_policy, name='privacy_policy_php'),
     
     # ------------------------------------------
     # API (includes all router URLs)
