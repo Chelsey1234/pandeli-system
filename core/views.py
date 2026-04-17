@@ -37,6 +37,12 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.chart import BarChart, Reference, LineChart
 import csv
 
+# ========== PUBLIC VIEWS (no login required) ==========
+
+def privacy_policy(request):
+    """Privacy Policy page - accessible without login"""
+    return render(request, 'core/privacy_policy.html')
+
 # ========== AUTHENTICATION VIEWS ==========
 
 @never_cache

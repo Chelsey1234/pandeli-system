@@ -72,7 +72,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = self.get_serializer(data=request.data)
+        data = request.data.copy()
+        data.pop('recipes', None)
+
+        serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             product = serializer.save()
@@ -89,7 +92,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        data = request.data.copy()
+        data.pop('recipes', None)
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             product = serializer.save()

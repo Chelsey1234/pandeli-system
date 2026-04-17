@@ -94,6 +94,11 @@ urlpatterns = [
          name='create_bulk_notification'),
     
     # ------------------------------------------
+    # PUBLIC PAGES (no login required)
+    # ------------------------------------------
+    path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
+    
+    # ------------------------------------------
     # API (includes all router URLs)
     # This will create endpoints like:
     # /api/products/

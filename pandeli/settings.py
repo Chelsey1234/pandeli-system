@@ -197,6 +197,7 @@ PUBLIC_PATHS = [
     '/static/',
     '/media/',
     '/admin/login/',
+    '/privacy-policy/',
 ]
 
 IMPORT_EXPORT_USE_TRANSACTIONS = True
