@@ -308,8 +308,24 @@ def order_list(request):
 @login_required
 def order_detail(request, pk):
     order = get_object_or_404(Order, pk=pk)
+    # Safely get customer — handles UUID customer_id from mobile app
+    customer = None
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT customer_id FROM core_order WHERE id = %s", [pk])
+            row = cursor.fetchone()
+            if row and row[0]:
+                try:
+                    cid = int(row[0])
+                    customer = Customer.objects.filter(pk=cid).first()
+                except (ValueError, TypeError):
+                    customer = None
+    except Exception:
+        customer = None
     context = {
         'order': order,
+        'customer': customer,
     }
     return render(request, 'core/order_detail.html', context)
 
@@ -329,59 +345,73 @@ def confirm_order(request, pk):
                 messages.error(request, f"Insufficient stock for: {', '.join(insufficient_stock)}")
                 return redirect('order_detail', pk=pk)
             
-            # Deduct stock
-            for item in order.items.all():
-                old_stock = item.product.stock
-                item.product.stock -= item.quantity
-                item.product.save()
-                
-                # Record transaction
-                InventoryTransaction.objects.create(
-                    product=item.product,
-                    transaction_type='out',
-                    quantity=item.quantity,
-                    previous_stock=old_stock,
-                    new_stock=item.product.stock,
-                    reference=order.order_number,
-                    notes=f"Order confirmation",
-                    created_by=request.user
-                )
-                
-                # Deduct raw materials if recipe exists
-                for recipe in item.product.recipe.all():
-                    material = recipe.raw_material
-                    needed_qty = recipe.quantity * item.quantity
-                    
-                    if material.stock_quantity >= needed_qty:
-                        old_material_stock = material.stock_quantity
-                        material.stock_quantity -= needed_qty
-                        material.save()
+            try:
+                with transaction.atomic():
+                    for item in order.items.all():
+                        product = Product.objects.select_for_update().get(pk=item.product.pk)
+                        old_stock = product.stock
+                        product.stock -= item.quantity
+                        product.save()
                         
-                        RawMaterialTransaction.objects.create(
-                            raw_material=material,
+                        InventoryTransaction.objects.create(
+                            product=product,
                             transaction_type='out',
-                            quantity=needed_qty,
-                            previous_stock=old_material_stock,
-                            new_stock=material.stock_quantity,
+                            quantity=item.quantity,
+                            previous_stock=old_stock,
+                            new_stock=product.stock,
                             reference=order.order_number,
-                            notes=f"Used for {item.product.name}",
+                            notes="Order confirmation",
                             created_by=request.user
                         )
+                        
+                        for recipe in product.recipe.all():
+                            material = recipe.raw_material
+                            needed_qty = recipe.quantity * item.quantity
+                            if material.stock_quantity >= needed_qty:
+                                old_material_stock = material.stock_quantity
+                                material.stock_quantity -= needed_qty
+                                material.save()
+                                RawMaterialTransaction.objects.create(
+                                    raw_material=material,
+                                    transaction_type='out',
+                                    quantity=needed_qty,
+                                    previous_stock=old_material_stock,
+                                    new_stock=material.stock_quantity,
+                                    reference=order.order_number,
+                                    notes=f"Used for {product.name}",
+                                    created_by=request.user
+                                )
+                    
+                    # Use raw update to avoid loading UUID customer FK
+                    Order.objects.filter(pk=order.pk).update(status='confirmed')
+                
+                # Notification — safely handle UUID customer_id
+                try:
+                    from django.db import connection
+                    with connection.cursor() as cursor:
+                        cursor.execute("SELECT customer_id FROM core_order WHERE id = %s", [order.pk])
+                        row = cursor.fetchone()
+                        if row and row[0]:
+                            try:
+                                cid = int(row[0])
+                                customer = Customer.objects.filter(pk=cid).first()
+                                if customer and customer.user:
+                                    Notification.objects.create(
+                                        title=f"Order #{order.order_number} Confirmed",
+                                        message="Your order has been confirmed and is being prepared.",
+                                        notification_type='order',
+                                        recipient_type='customer',
+                                        recipient_user=customer.user
+                                    )
+                            except (ValueError, TypeError):
+                                pass
+                except Exception:
+                    pass
+                
+                messages.success(request, f'Order #{order.order_number} confirmed successfully.')
             
-            order.status = 'confirmed'
-            order.save()
-            
-            # Create notification
-            if order.customer and order.customer.user:
-                Notification.objects.create(
-                    title=f"Order #{order.order_number} Confirmed",
-                    message=f"Your order has been confirmed and is being prepared.",
-                    notification_type='order',
-                    recipient_type='customer',
-                    recipient_user=order.customer.user
-                )
-            
-            messages.success(request, f'Order #{order.order_number} confirmed successfully.')
+            except Exception as e:
+                messages.error(request, f'Error confirming order: {str(e)}')
     
     return redirect('order_detail', pk=pk)
 
