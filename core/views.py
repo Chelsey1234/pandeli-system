@@ -170,10 +170,9 @@ def dashboard(request):
     start_of_month = today.replace(day=1)
     week_start = today - timedelta(days=6)
 
-    # Run all aggregates in as few queries as possible
     from django.db.models import Count
 
-    # Single query for today's stats
+    # Single query for today's stats + monthly in one shot
     today_stats = Order.objects.filter(created_at__date=today).aggregate(
         daily_sales=Sum('total'),
         total_orders=Count('id'),
@@ -187,13 +186,13 @@ def dashboard(request):
 
     pending_orders = Order.objects.filter(status='pending').count()
 
-    # Low stock
+    # Low stock — minimal fields only
     low_stock_products = Product.objects.filter(
         stock__lte=F('low_stock_threshold'),
-        is_available=True
+        is_archived=False,
     ).only('name', 'stock', 'low_stock_threshold')[:10]
 
-    # Best sellers
+    # Best sellers — single aggregation query
     best_sellers = OrderItem.objects.values(
         'product__name', 'product__id'
     ).annotate(
@@ -201,7 +200,7 @@ def dashboard(request):
         total_sales=Sum('subtotal')
     ).order_by('-total_quantity')[:5]
 
-    # Sales graph — single query for last 7 days
+    # Sales graph — single query
     sales_qs = (
         Order.objects.filter(created_at__date__gte=week_start)
         .annotate(day=TruncDay('created_at'))
@@ -209,29 +208,19 @@ def dashboard(request):
         .annotate(total=Sum('total'))
         .order_by('day')
     )
-    sales_by_day = {}
-    for row in sales_qs:
-        if row['day']:
-            sales_by_day[row['day'].date()] = float(row['total'] or 0)
+    sales_by_day = {row['day'].date(): float(row['total'] or 0) for row in sales_qs if row['day']}
 
-    last_7_days = []
-    sales_data = []
+    last_7_days, sales_data = [], []
     for i in range(6, -1, -1):
         date = today - timedelta(days=i)
         last_7_days.append(date.strftime('%Y-%m-%d'))
         sales_data.append(sales_by_day.get(date, 0))
 
-    # Recent orders
+    # Recent orders — minimal fields
     recent_orders = Order.objects.select_related('customer').only(
-        'order_number', 'order_type', 'status', 'total', 'created_at',
+        'id', 'order_number', 'order_type', 'status', 'total', 'created_at',
         'customer__name'
     ).order_by('-created_at')[:5]
-
-    # Products and customers for modal
-    products = Product.objects.filter(is_archived=False).only(
-        'id', 'name', 'price', 'stock', 'category'
-    ).order_by('name')[:100]
-    customers = Customer.objects.only('id', 'name').order_by('name')[:50]
 
     context = {
         'daily_sales': daily_sales,
@@ -243,8 +232,6 @@ def dashboard(request):
         'recent_orders': recent_orders,
         'sales_labels': json.dumps(last_7_days),
         'sales_data': json.dumps(sales_data),
-        'products': products,
-        'customers': customers,
     }
 
     return render(request, 'core/dashboard.html', context)
@@ -253,25 +240,29 @@ def dashboard(request):
 
 @login_required
 def product_list(request):
-    products = Product.objects.filter(is_archived=False)
-    archived_products = Product.objects.filter(is_archived=True).order_by('-archived_at', '-updated_at')
+    products = Product.objects.filter(is_archived=False).only(
+        'id', 'code', 'name', 'category', 'price', 'cost', 'stock',
+        'low_stock_threshold', 'image', 'is_available',
+        'is_new_arrival', 'is_best_seller'
+    )
+    archived_products = Product.objects.filter(is_archived=True).only(
+        'id', 'code', 'name', 'category', 'archived_at'
+    ).order_by('-archived_at', '-updated_at')[:50]
     categories = Product.CATEGORY_CHOICES
-    raw_materials = RawMaterial.objects.all().order_by('name')
-    
-    # Filter by category
+    raw_materials = RawMaterial.objects.only('id', 'name', 'unit').order_by('name')
+
     category = request.GET.get('category')
     if category:
         products = products.filter(category=category)
-    
-    # Search
+
     search = request.GET.get('search')
     if search:
         products = products.filter(
-            Q(name__icontains=search) | 
+            Q(name__icontains=search) |
             Q(code__icontains=search) |
             Q(description__icontains=search)
         )
-    
+
     context = {
         'products': products,
         'archived_products': archived_products,

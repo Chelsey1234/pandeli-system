@@ -17,7 +17,8 @@ def safe_context_processor(func):
 @safe_context_processor
 def notifications(request):
     """
-    Context processor to add notification data to all templates
+    Context processor to add notification data to all templates.
+    Uses only() to minimize data transfer.
     """
     context = {
         'unread_notifications_count': 0,
@@ -27,8 +28,6 @@ def notifications(request):
     if hasattr(request, 'user') and request.user.is_authenticated:
         try:
             from .models import Notification
-            
-            # Check if the Notification table exists
             from django.db import connection
             if 'core_notification' in connection.introspection.table_names():
                 unread_count = Notification.objects.filter(
@@ -38,6 +37,9 @@ def notifications(request):
                 
                 recent_notifications = Notification.objects.filter(
                     recipient_user=request.user
+                ).only(
+                    'id', 'title', 'message', 'notification_type',
+                    'is_read', 'created_at', 'link', 'action_text'
                 ).order_by('-created_at')[:5]
                 
                 context = {
@@ -53,30 +55,27 @@ def notifications(request):
 @safe_context_processor
 def products_context(request):
     """
-    Context processor to add products to all templates for the New Order modal
+    Context processor — only loads products/customers for pages that need the modal.
+    Uses minimal fields to reduce query cost.
     """
     context = {
         'products': [],
-        'customers': [],  # Also add customers for the order modal
+        'customers': [],
     }
-    
+
     if hasattr(request, 'user') and request.user.is_authenticated:
         try:
             from .models import Product, Customer
-            
-            # For Create New Order modal: show all products so admin can order any product
-            products = Product.objects.all().order_by('name')[:100]
-            
-            # Get customers for the order modal
-            customers = Customer.objects.all().order_by('name')[:50]
-            
+            # Only load what the New Order modal needs
             context = {
-                'products': products,
-                'customers': customers,
+                'products': Product.objects.filter(
+                    is_archived=False, is_available=True
+                ).only('id', 'name', 'price', 'stock', 'category').order_by('name')[:50],
+                'customers': Customer.objects.only('id', 'name').order_by('name')[:30],
             }
         except Exception as e:
             logger.warning(f"Could not load products/customers: {e}")
-    
+
     return context
 
 
