@@ -15,7 +15,7 @@
             <i class="fas fa-images text-brand"></i> App Features
         </h2>
     </div>
-    <button data-bs-toggle="modal" data-bs-target="#addFeatureModal"
+    <button onclick="openFeatureModal()"
             class="px-4 py-2 text-sm rounded-xl text-white font-medium transition-all hover:-translate-y-0.5"
             style="background:#38a169;">
         <i class="fas fa-plus mr-1"></i> Add Feature Image
@@ -24,7 +24,7 @@
 
 <!-- Info -->
 <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-5 text-sm text-blue-700 flex items-start gap-2">
-    <i class="fas fa-mobile-alt mt-0.5"></i>
+    <i class="fas fa-mobile-alt mt-0.5 flex-shrink-0"></i>
     <div>
         These images appear in the <strong>app home screen carousel/banner</strong>.
         Upload promo images here — active ones show in the app automatically.
@@ -50,7 +50,7 @@
         <div class="relative">
             <img src="{{ feature.image.url }}" alt="{{ feature.title }}"
                  class="w-full h-44 object-cover"
-                 onerror="this.style.background='#f3f4f6';this.style.height='176px';this.src='';">
+                 onerror="this.style.background='#f3f4f6';this.removeAttribute('src');">
             <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-medium
                 {% if feature.is_active %}bg-green-500 text-white{% else %}bg-gray-400 text-white{% endif %}">
                 {% if feature.is_active %}✅ Active{% else %}Hidden{% endif %}
@@ -87,7 +87,7 @@
         <i class="fas fa-images text-4xl text-gray-300 mb-3 block"></i>
         <p class="font-medium text-gray-500">No app features yet</p>
         <p class="text-sm text-gray-400 mt-1 mb-4">Upload promo images to show in the app carousel</p>
-        <button data-bs-toggle="modal" data-bs-target="#addFeatureModal"
+        <button onclick="openFeatureModal()"
                 class="px-4 py-2 text-sm rounded-xl text-white font-medium"
                 style="background:#38a169;">
             <i class="fas fa-plus mr-1"></i> Add Feature Image
@@ -96,57 +96,75 @@
     {% endfor %}
 </div>
 
-<!-- Add Feature Modal -->
-<div class="modal fade" id="addFeatureModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
-        <div class="modal-content rounded-2xl overflow-hidden border-0 shadow-xl">
-            <div class="px-6 py-4 flex items-center justify-between" style="background:#38a169;">
-                <h5 class="text-white font-semibold text-base">
-                    <i class="fas fa-plus mr-2"></i>Add Feature Image
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post" action="{% url 'app_feature_add' %}" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">
-                            Image <span class="text-red-500">*</span>
-                        </label>
-                        <input type="file" name="image" accept="image/*" required
-                               class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-brand">
-                        <p class="text-xs text-gray-400 mt-1">Recommended: 1200×400px. JPG/PNG.</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-gray-400 font-normal">(optional)</span></label>
-                        <input type="text" name="title" placeholder="e.g. Freshly Baked Daily"
-                               class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-brand">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Subtitle <span class="text-gray-400 font-normal">(optional)</span></label>
-                        <input type="text" name="subtitle" placeholder="e.g. Taste the warmth in every bite."
-                               class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-brand">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
-                        <input type="number" name="order" value="0" min="0"
-                               class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-brand">
-                        <p class="text-xs text-gray-400 mt-1">Lower = shown first in carousel.</p>
-                    </div>
-                </div>
-                <div class="px-6 pb-6 flex justify-end gap-3">
-                    <button type="button" data-bs-dismiss="modal"
-                            class="px-4 py-2 text-sm rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                            class="px-4 py-2 text-sm rounded-xl text-white font-medium"
-                            style="background:#38a169;">
-                        <i class="fas fa-upload mr-1"></i> Upload
-                    </button>
-                </div>
-            </form>
+<!-- Custom Modal Overlay -->
+<div id="featureModalOverlay"
+     class="hidden fixed inset-0 flex items-center justify-center"
+     style="z-index:99999; background:rgba(0,0,0,0.6);">
+    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md mx-4">
+        <div class="px-6 py-4 flex items-center justify-between" style="background:#38a169;">
+            <h5 class="text-white font-semibold text-base">
+                <i class="fas fa-plus mr-2"></i>Add Feature Image
+            </h5>
+            <button type="button" onclick="closeFeatureModal()"
+                    class="text-white/80 hover:text-white text-2xl leading-none font-light">&times;</button>
         </div>
+        <form method="post" action="{% url 'app_feature_add' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Image <span class="text-red-500">*</span>
+                    </label>
+                    <input type="file" name="image" accept="image/*" required
+                           class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                    <p class="text-xs text-gray-400 mt-1">Recommended: 1200×400px. JPG/PNG.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <input type="text" name="title" placeholder="e.g. Freshly Baked Daily"
+                           class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Subtitle <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <input type="text" name="subtitle" placeholder="e.g. Taste the warmth in every bite."
+                           class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+                    <input type="number" name="order" value="0" min="0"
+                           class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                    <p class="text-xs text-gray-400 mt-1">Lower = shown first in carousel.</p>
+                </div>
+            </div>
+            <div class="px-6 pb-6 flex justify-end gap-3">
+                <button type="button" onclick="closeFeatureModal()"
+                        class="px-4 py-2 text-sm rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm rounded-xl text-white font-medium"
+                        style="background:#38a169;">
+                    <i class="fas fa-upload mr-1"></i> Upload
+                </button>
+            </div>
+        </form>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+function openFeatureModal() {
+    document.getElementById('featureModalOverlay').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+function closeFeatureModal() {
+    document.getElementById('featureModalOverlay').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+// Close on backdrop click
+document.getElementById('featureModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeFeatureModal();
+});
+</script>
+{% endblock %}
 {% endblock %}
