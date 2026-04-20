@@ -161,6 +161,20 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(product)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'])
+    def toggle_new_arrival(self, request, pk=None):
+        product = self.get_object()
+        product.is_new_arrival = not product.is_new_arrival
+        product.save(update_fields=['is_new_arrival'])
+        return Response({'is_new_arrival': product.is_new_arrival})
+
+    @action(detail=True, methods=['post'])
+    def toggle_best_seller(self, request, pk=None):
+        product = self.get_object()
+        product.is_best_seller = not product.is_best_seller
+        product.save(update_fields=['is_best_seller'])
+        return Response({'is_best_seller': product.is_best_seller})
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all().prefetch_related('items__product')

@@ -746,17 +746,21 @@ def forecast(request):
 def run_forecast(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
-        days = min(int(request.POST.get('days', 14)), 14)  # cap at 14 days
+        days = int(request.POST.get('days', 14))
+        # Cap to avoid timeout: single product can do 365, all products max 30
+        if product_id:
+            days = min(days, 365)
+        else:
+            days = min(days, 30)
 
         created_count = 0
         try:
             if product_id:
-                # Single product — fast
                 product = get_object_or_404(Product, id=product_id)
                 result = generate_simple_forecast(product, days)
                 created_count = len(result or [])
             else:
-                # All products — process max 5 at a time to avoid timeout
+                # All products — max 5 at a time to avoid timeout
                 products = Product.objects.filter(
                     is_archived=False, is_available=True
                 ).order_by('-updated_at')[:5]
@@ -770,7 +774,7 @@ def run_forecast(request):
             messages.error(request, f'Forecast error: {str(e)}')
             return redirect('forecast')
 
-        messages.success(request, f'Forecast generated! ({created_count} entries)')
+        messages.success(request, f'Forecast generated! ({created_count} entries for {days} days)')
         return redirect('forecast')
 
     return redirect('forecast')
