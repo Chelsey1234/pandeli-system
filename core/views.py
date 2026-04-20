@@ -341,9 +341,18 @@ def order_detail(request, pk):
     # Safely get customer — customer_id may be a UUID string from mobile app
     customer = None
     try:
-        customer = order.customer
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT customer_id FROM core_order WHERE id = %s", [pk])
+            row = cursor.fetchone()
+            if row and row[0]:
+                try:
+                    cid = int(row[0])
+                    customer = Customer.objects.filter(pk=cid).first()
+                except (ValueError, TypeError):
+                    customer = None
     except Exception:
-        pass
+        customer = None
     context = {
         'order': order,
         'customer': customer,
@@ -368,14 +377,12 @@ def confirm_order(request, pk):
             
             try:
                 with transaction.atomic():
-                    # Deduct stock
                     for item in order.items.all():
                         product = Product.objects.select_for_update().get(pk=item.product.pk)
                         old_stock = product.stock
                         product.stock -= item.quantity
                         product.save()
                         
-                        # Record transaction
                         InventoryTransaction.objects.create(
                             product=product,
                             transaction_type='out',
@@ -387,16 +394,13 @@ def confirm_order(request, pk):
                             created_by=request.user
                         )
                         
-                        # Deduct raw materials if recipe exists
                         for recipe in product.recipe.all():
                             material = recipe.raw_material
                             needed_qty = recipe.quantity * item.quantity
-                            
                             if material.stock_quantity >= needed_qty:
                                 old_material_stock = material.stock_quantity
                                 material.stock_quantity -= needed_qty
                                 material.save()
-                                
                                 RawMaterialTransaction.objects.create(
                                     raw_material=material,
                                     transaction_type='out',
@@ -408,22 +412,33 @@ def confirm_order(request, pk):
                                     created_by=request.user
                                 )
                     
-                    order.status = 'confirmed'
-                    order.save()
+                    # Update status using raw update to avoid loading customer FK
+                    Order.objects.filter(pk=order.pk).update(status='confirmed')
                 
-                # Create notification — safely handle UUID customer_id from mobile app
+                # Notification — completely isolated, never blocks confirmation
                 try:
-                    customer = order.get_customer_safe()
-                    if customer and customer.user:
-                        Notification.objects.create(
-                            title=f"Order #{order.order_number} Confirmed",
-                            message="Your order has been confirmed and is being prepared.",
-                            notification_type='order',
-                            recipient_type='customer',
-                            recipient_user=customer.user
+                    from django.db import connection
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            "SELECT customer_id FROM core_order WHERE id = %s", [order.pk]
                         )
+                        row = cursor.fetchone()
+                        if row and row[0]:
+                            try:
+                                cid = int(row[0])
+                                customer = Customer.objects.filter(pk=cid).first()
+                                if customer and customer.user:
+                                    Notification.objects.create(
+                                        title=f"Order #{order.order_number} Confirmed",
+                                        message="Your order has been confirmed and is being prepared.",
+                                        notification_type='order',
+                                        recipient_type='customer',
+                                        recipient_user=customer.user
+                                    )
+                            except (ValueError, TypeError):
+                                pass  # UUID or invalid customer_id — skip notification
                 except Exception:
-                    pass  # Never block confirmation due to notification failure
+                    pass
                 
                 messages.success(request, f'Order #{order.order_number} confirmed successfully.')
             

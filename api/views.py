@@ -73,13 +73,13 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def new_arrivals(self, request):
         products = self.queryset.filter(is_new_arrival=True, is_archived=False, is_available=True)
-        serializer = self.get_serializer(products, many=True)
+        serializer = self.get_serializer(products, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
     def best_sellers(self, request):
         products = self.queryset.filter(is_best_seller=True, is_archived=False, is_available=True)
-        serializer = self.get_serializer(products, many=True)
+        serializer = self.get_serializer(products, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])

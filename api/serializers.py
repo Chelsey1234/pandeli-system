@@ -49,10 +49,19 @@ class CategorySerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category', read_only=True)
     profit_margin = serializers.ReadOnlyField()
-    
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
         fields = '__all__'
+
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
 
 # RawMaterial Serializer
 class RawMaterialSerializer(serializers.ModelSerializer):
