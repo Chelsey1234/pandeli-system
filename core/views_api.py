@@ -155,6 +155,32 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(product)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'])
+    def toggle_new_arrival(self, request, pk=None):
+        product = self.get_object()
+        product.is_new_arrival = not product.is_new_arrival
+        product.save(update_fields=['is_new_arrival'])
+        return Response({'is_new_arrival': product.is_new_arrival})
+
+    @action(detail=True, methods=['post'])
+    def toggle_best_seller(self, request, pk=None):
+        product = self.get_object()
+        product.is_best_seller = not product.is_best_seller
+        product.save(update_fields=['is_best_seller'])
+        return Response({'is_best_seller': product.is_best_seller})
+
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def new_arrivals(self, request):
+        products = Product.objects.filter(is_new_arrival=True, is_archived=False).order_by('-created_at')
+        serializer = self.get_serializer(products, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def best_sellers(self, request):
+        products = Product.objects.filter(is_best_seller=True, is_archived=False).order_by('name')
+        serializer = self.get_serializer(products, many=True, context={'request': request})
+        return Response(serializer.data)
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all().prefetch_related('items__product')

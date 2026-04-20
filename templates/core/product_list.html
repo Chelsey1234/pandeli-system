@@ -26,6 +26,11 @@
            style="background:#C98A6B;">
             <i class="fas fa-download mr-1"></i> Export
         </a>
+        <a href="{% url 'app_feature_list' %}"
+           class="px-4 py-2 text-sm rounded-xl text-white font-medium transition-all hover:-translate-y-0.5"
+           style="background:#7C4A2D;">
+            <i class="fas fa-images mr-1"></i> App Features
+        </a>
     </div>
     {% endif %}
 </div>
@@ -78,6 +83,8 @@
                     <th class="px-4 py-3 text-center">Profit</th>
                     <th class="px-4 py-3 text-center">Status</th>
                     {% if not is_production_admin %}
+                    <th class="px-4 py-3 text-center">🆕 New</th>
+                    <th class="px-4 py-3 text-center">⭐ Best</th>
                     <th class="px-4 py-3 text-left w-28">Actions</th>
                     {% endif %}
                 </tr>
@@ -120,6 +127,18 @@
                         {% endif %}
                     </td>
                     {% if not is_production_admin %}
+                    <td class="px-4 py-3 text-center">
+                        <button class="p-1.5 rounded-lg transition-colors {% if product.is_new_arrival %}bg-blue-500 text-white{% else %}bg-gray-100 text-gray-400 hover:bg-blue-50{% endif %}"
+                                onclick="toggleFlag({{ product.id }}, 'new_arrival', this)" title="Toggle New Arrival">
+                            🆕
+                        </button>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <button class="p-1.5 rounded-lg transition-colors {% if product.is_best_seller %}bg-yellow-400 text-white{% else %}bg-gray-100 text-gray-400 hover:bg-yellow-50{% endif %}"
+                                onclick="toggleFlag({{ product.id }}, 'best_seller', this)" title="Toggle Best Seller">
+                            ⭐
+                        </button>
+                    </td>
                     <td class="px-4 py-3">
                         <div class="flex gap-1">
                             <button onclick="editProduct({{ product.id }})" title="Edit"
@@ -559,6 +578,31 @@ function saveProduct() {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
     });
+}
+
+// Toggle New Arrival / Best Seller flag
+function toggleFlag(productId, flag, btn) {
+    fetch(`/api/products/${productId}/toggle_${flag}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        const isActive = flag === 'new_arrival' ? data.is_new_arrival : data.is_best_seller;
+        if (flag === 'new_arrival') {
+            btn.className = btn.className.replace(/bg-\w+-\d+\s+text-\w+/g, '').trim();
+            btn.className += isActive ? ' bg-blue-500 text-white' : ' bg-gray-100 text-gray-400';
+        } else {
+            btn.className = btn.className.replace(/bg-\w+-\d+\s+text-\w+/g, '').trim();
+            btn.className += isActive ? ' bg-yellow-400 text-white' : ' bg-gray-100 text-gray-400';
+        }
+        const label = flag === 'new_arrival' ? 'New Arrival' : 'Best Seller';
+        showToast(`${label} ${isActive ? 'enabled' : 'disabled'}!`, 'success');
+    })
+    .catch(() => showToast('Error updating product', 'danger'));
 }
 
 // Adjust stock function
