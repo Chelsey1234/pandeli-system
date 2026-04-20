@@ -181,6 +181,13 @@ class Order(models.Model):
             models.Index(fields=['payment_status']),
         ]
     
+    def get_customer_safe(self):
+        """Safely get customer — handles UUID customer_id from mobile app"""
+        try:
+            return self.customer
+        except Exception:
+            return None
+
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = f"ORD-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"

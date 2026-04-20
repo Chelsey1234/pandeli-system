@@ -411,18 +411,19 @@ def confirm_order(request, pk):
                     order.status = 'confirmed'
                     order.save()
                 
-                # Create notification outside transaction — failure here won't rollback the order
+                # Create notification — safely handle UUID customer_id from mobile app
                 try:
-                    if order.customer and order.customer.user:
+                    customer = order.get_customer_safe()
+                    if customer and customer.user:
                         Notification.objects.create(
                             title=f"Order #{order.order_number} Confirmed",
                             message="Your order has been confirmed and is being prepared.",
                             notification_type='order',
                             recipient_type='customer',
-                            recipient_user=order.customer.user
+                            recipient_user=customer.user
                         )
                 except Exception:
-                    pass
+                    pass  # Never block confirmation due to notification failure
                 
                 messages.success(request, f'Order #{order.order_number} confirmed successfully.')
             

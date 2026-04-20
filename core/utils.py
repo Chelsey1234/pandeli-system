@@ -10,90 +10,14 @@ import logging
 logger = _logging.getLogger(__name__)
 
 def generate_sales_forecast(product, days=30):
-    """
-    Generate sales forecast for a product.
-    Uses Prophet if available, otherwise ARIMA via statsmodels, else simple moving average.
-    """
-    try:
-        # Get historical sales data (last 90 days)
-        end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=90)
-        
-        sales_data = OrderItem.objects.filter(
-            product=product,
-            order__created_at__date__gte=start_date,
-            order__created_at__date__lte=end_date,
-        ).values(
-            'order__created_at__date'
-        ).annotate(
-            total=Sum('quantity')
-        ).order_by('order__created_at__date')
-        
-        if len(sales_data) < 7:
-            return generate_simple_forecast(product, days)
-        
-        df = pd.DataFrame(list(sales_data))
-        df.columns = ['ds', 'y']
-        df['ds'] = pd.to_datetime(df['ds'])
-        df = df.set_index('ds').resample('D').sum().fillna(0).reset_index()
-        
-        # Try Prophet first (optional dependency)
-        try:
-            from prophet import Prophet
-            model = Prophet(
-                yearly_seasonality=False,
-                weekly_seasonality=True,
-                daily_seasonality=False,
-            )
-            model.fit(df)
-            future = model.make_future_dataframe(periods=days)
-            forecast = model.predict(future)
-            forecasts = []
-            for _, row in forecast.tail(days).iterrows():
-                forecast_date = row['ds'].date()
-                predicted = max(0, int(round(row['yhat'])))
-                lower = max(0, int(round(row.get('yhat_lower', predicted - 2))))
-                upper = max(0, int(round(row.get('yhat_upper', predicted + 2))))
-                forecast_obj, _ = SalesForecast.objects.update_or_create(
-                    product=product, forecast_date=forecast_date,
-                    defaults={'predicted_quantity': predicted, 'confidence_lower': lower,
-                              'confidence_upper': upper, 'model_used': 'Prophet'}
-                )
-                forecasts.append(forecast_obj)
-            return forecasts
-        except ImportError:
-            pass
-        
-        # Try statsmodels ARIMA
-        try:
-            from statsmodels.tsa.arima.model import ARIMA
-            ts = df.set_index('ds')['y']
-            model = ARIMA(ts, order=(1, 0, 1))
-            fitted = model.fit()
-            forecast_vals = fitted.forecast(steps=days)
-            forecasts = []
-            for i, val in enumerate(forecast_vals):
-                forecast_date = end_date + timedelta(days=i + 1)
-                predicted = max(0, int(round(val)))
-                forecast_obj, _ = SalesForecast.objects.update_or_create(
-                    product=product, forecast_date=forecast_date,
-                    defaults={'predicted_quantity': predicted, 'confidence_lower': max(0, predicted - 3),
-                              'confidence_upper': predicted + 3, 'model_used': 'ARIMA'}
-                )
-                forecasts.append(forecast_obj)
-            return forecasts
-        except ImportError:
-            pass
-        
-        return generate_simple_forecast(product, days)
-    except Exception as e:
-        logger.error(f"Error generating forecast for {product.name}: {str(e)}")
-        return generate_simple_forecast(product, days)
+    """Alias for generate_simple_forecast — heavy ML libraries removed to prevent timeouts."""
+    return generate_simple_forecast(product, days)
 
 def generate_simple_forecast(product, days=30):
     """
     Generate simple forecast using moving average.
     Always generates forecasts even with no order history.
+    Pure Python — no heavy ML libraries to avoid timeouts.
     """
     try:
         end_date = timezone.now().date()
@@ -111,7 +35,7 @@ def generate_simple_forecast(product, days=30):
         forecasts = []
         for i in range(days):
             forecast_date = end_date + timedelta(days=i + 1)
-            # Small deterministic variation based on day of week
+            # Small deterministic variation based on day of week (no random)
             dow_factor = [0, 1, 1, 0, 1, 2, 2][forecast_date.weekday()]
             predicted = max(0, avg_sales + dow_factor)
             

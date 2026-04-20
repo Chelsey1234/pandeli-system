@@ -305,6 +305,31 @@
                         <textarea class="form-control" id="description" name="description" 
                                   rows="3" placeholder="Enter product description..."></textarea>
                     </div>
+
+                    <!-- Row 6: App Home Screen Flags -->
+                    <div class="row">
+                        <div class="col-12 mb-2">
+                            <label class="form-label fw-bold">📱 App Home Screen</label>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_new_arrival" name="is_new_arrival">
+                                <label class="form-check-label" for="is_new_arrival">
+                                    🆕 <strong>New Arrival</strong>
+                                    <small class="text-muted d-block">Show on app home screen New Arrivals section</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="is_best_seller" name="is_best_seller">
+                                <label class="form-check-label" for="is_best_seller">
+                                    ⭐ <strong>Best Seller</strong>
+                                    <small class="text-muted d-block">Show on app home screen Best Sellers section</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -509,6 +534,10 @@ function saveProduct() {
     const recipes = collectRecipes();
     formData.append('recipes', JSON.stringify(recipes));
     
+    // Handle checkboxes (not included in FormData when unchecked)
+    formData.set('is_new_arrival', document.getElementById('is_new_arrival').checked);
+    formData.set('is_best_seller', document.getElementById('is_best_seller').checked);
+    
     // Send AJAX request
     fetch(endpoint, {
         method: method,
@@ -536,6 +565,8 @@ function saveProduct() {
         // Reset form
         form.reset();
         resetRecipeRows();
+        document.getElementById('is_new_arrival').checked = false;
+        document.getElementById('is_best_seller').checked = false;
         editingProductId = null;
         
         // Reload page after 1.5 seconds
@@ -696,6 +727,8 @@ function editProduct(productId) {
             document.getElementById('stock').value = product.stock ?? 0;
             document.getElementById('low_stock_threshold').value = product.low_stock_threshold ?? 10;
             document.getElementById('description').value = product.description || '';
+            document.getElementById('is_new_arrival').checked = product.is_new_arrival || false;
+            document.getElementById('is_best_seller').checked = product.is_best_seller || false;
             resetRecipeRows();
             (product.recipe_details || []).forEach((item) => {
                 addRecipeRow(item.raw_material_id, item.quantity);
