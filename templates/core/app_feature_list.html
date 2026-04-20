@@ -38,7 +38,8 @@
             <div class="card h-100 {% if not feature.is_active %}border-secondary{% else %}border-success border-2{% endif %}">
                 <div class="position-relative">
                     <img src="{{ feature.image.url }}" class="card-img-top"
-                         style="height: 180px; object-fit: cover;">
+                         style="height: 180px; object-fit: cover;"
+                         onerror="this.src='';this.style.height='180px';this.style.background='#f0f0f0';">
                     <span class="position-absolute top-0 end-0 m-2 badge {% if feature.is_active %}bg-success{% else %}bg-secondary{% endif %}">
                         {% if feature.is_active %}✅ Active{% else %}Hidden{% endif %}
                     </span>

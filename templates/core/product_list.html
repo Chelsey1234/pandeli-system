@@ -84,7 +84,12 @@
                             <td>
                                 {% if product.image %}
                                     <img src="{{ product.image.url }}" alt="{{ product.name }}" 
-                                         style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+                                         style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;"
+                                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                                    <div class="bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center" 
+                                         style="width: 50px; height: 50px; border-radius: 5px; display: none !important;">
+                                        <i class="fas fa-box"></i>
+                                    </div>
                                 {% else %}
                                     <div class="bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center" 
                                          style="width: 50px; height: 50px; border-radius: 5px;">
