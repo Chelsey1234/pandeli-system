@@ -133,8 +133,8 @@ def is_production_team(user):
 
 @login_required
 def dashboard(request):
-    # Get date ranges
-    today = timezone.now().date()
+    # Get date ranges — use localdate() to respect Asia/Manila timezone
+    today = timezone.localdate()
     start_of_month = today.replace(day=1)
     start_of_week = today - timedelta(days=today.weekday())
     

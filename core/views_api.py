@@ -399,7 +399,7 @@ class DashboardViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """Get dashboard summary data — all orders regardless of payment status"""
-        today = timezone.now().date()
+        today = timezone.localdate()
         start_of_month = today.replace(day=1)
         
         daily_sales = Order.objects.filter(
@@ -438,7 +438,7 @@ class DashboardViewSet(viewsets.ViewSet):
     def sales_chart(self, request):
         """Get sales chart data — all orders regardless of payment status"""
         days = int(request.GET.get('days', 7))
-        today = timezone.now().date()
+        today = timezone.localdate()
         start = today - timedelta(days=days - 1)
 
         # Single query instead of N queries
@@ -462,7 +462,7 @@ class DashboardViewSet(viewsets.ViewSet):
     def sales_by_category(self, request):
         """Get sales by category for bar chart"""
         days = int(request.GET.get('days', 30))
-        start_date = timezone.now().date() - timedelta(days=days)
+        start_date = timezone.localdate() - timedelta(days=days)
         
         sales_by_category = OrderItem.objects.filter(
             order__created_at__date__gte=start_date,
@@ -501,7 +501,7 @@ class DashboardViewSet(viewsets.ViewSet):
         limit = int(request.GET.get('limit', 10))
         metric = request.GET.get('metric', 'sales')
         days = int(request.GET.get('days', 30))
-        start_date = timezone.now().date() - timedelta(days=days)
+        start_date = timezone.localdate() - timedelta(days=days)
         
         top_products = OrderItem.objects.filter(
             order__created_at__date__gte=start_date,
