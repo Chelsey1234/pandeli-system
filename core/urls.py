@@ -89,6 +89,7 @@ urlpatterns = [
     # API AUTH (for Android / external clients)
     # ------------------------------------------
     path('api/token/', obtain_auth_token, name='api_token_auth'),
+    path('api/debug-order/', views.debug_order_request, name='debug_order_request'),
     
     # ------------------------------------------
     # NOTIFICATION API

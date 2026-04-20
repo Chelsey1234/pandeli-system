@@ -1193,6 +1193,25 @@ def app_feature_delete(request, pk):
     messages.success(request, 'App feature deleted.')
     return redirect('app_feature_list')
 
+def debug_order_request(request):
+    """Debug endpoint — logs what the app sends when creating an order."""
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        body = request.body.decode('utf-8')
+    except Exception:
+        body = str(request.body)
+    logger.info(f"DEBUG ORDER REQUEST - Method: {request.method}")
+    logger.info(f"DEBUG ORDER REQUEST - Headers: {dict(request.headers)}")
+    logger.info(f"DEBUG ORDER REQUEST - Body: {body}")
+    logger.info(f"DEBUG ORDER REQUEST - POST: {dict(request.POST)}")
+    return JsonResponse({
+        'method': request.method,
+        'body': body,
+        'post': dict(request.POST),
+        'content_type': request.content_type,
+    })
+
 def app_features_api(request):
     features = AppFeature.objects.filter(is_active=True).order_by('order', '-created_at')
     data = []
