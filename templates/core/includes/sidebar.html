@@ -15,6 +15,7 @@
             <li><a href="{% url 'production_cost_analytics' %}" class="{% if request.resolver_match.url_name == 'production_cost_analytics' %}active{% endif %}"><i class="fas fa-chart-line"></i> Cost Analytics</a></li>
             <li><a href="{% url 'forecast' %}" class="{% if request.resolver_match.url_name == 'forecast' %}active{% endif %}"><i class="fas fa-chart-area"></i> Forecast</a></li>
             <li><a href="{% url 'import_data' %}" class="{% if request.resolver_match.url_name == 'import_data' or request.resolver_match.url_name == 'import_history' %}active{% endif %}"><i class="fas fa-file-import"></i> Import</a></li>
+            <li><a href="{% url 'banner_list' %}" class="{% if request.resolver_match.url_name == 'banner_list' %}active{% endif %}"><i class="fas fa-images"></i> Banners</a></li>
             <li><a href="{% url 'messages' %}"><i class="fas fa-bell"></i> Messages</a></li>
         </ul>
     </div>

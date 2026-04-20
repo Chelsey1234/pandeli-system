@@ -738,9 +738,9 @@ def run_forecast(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
         days = int(request.POST.get('days', 14))
-        # Cap to avoid timeout: single product can do 365, all products max 30
+        # Cap to avoid timeout
         if product_id:
-            days = min(days, 365)
+            days = min(days, 90)
         else:
             days = min(days, 30)
 
@@ -1105,6 +1105,64 @@ def supplier_list(request):
         'suppliers': suppliers,
     }
     return render(request, 'core/supplier_list.html', context)
+
+# ========== BANNER VIEWS ==========
+
+@login_required
+def banner_list(request):
+    banners = Banner.objects.all()
+    return render(request, 'core/banner_list.html', {'banners': banners})
+
+@login_required
+@require_POST
+def banner_add(request):
+    title = request.POST.get('title', '')
+    subtitle = request.POST.get('subtitle', '')
+    order = int(request.POST.get('order', 0))
+    image = request.FILES.get('image')
+    if not image:
+        messages.error(request, 'Image is required.')
+        return redirect('banner_list')
+    Banner.objects.create(title=title, subtitle=subtitle, image=image, order=order)
+    messages.success(request, 'Banner added successfully.')
+    return redirect('banner_list')
+
+@login_required
+@require_POST
+def banner_toggle(request, pk):
+    banner = get_object_or_404(Banner, pk=pk)
+    banner.is_active = not banner.is_active
+    banner.save(update_fields=['is_active'])
+    return JsonResponse({'is_active': banner.is_active})
+
+@login_required
+@require_POST
+def banner_delete(request, pk):
+    banner = get_object_or_404(Banner, pk=pk)
+    banner.image.delete(save=False)
+    banner.delete()
+    messages.success(request, 'Banner deleted.')
+    return redirect('banner_list')
+
+def banners_api(request):
+    """Public API endpoint for mobile app to fetch active banners."""
+    banners = Banner.objects.filter(is_active=True).order_by('order', '-created_at')
+    data = []
+    for b in banners:
+        image_url = None
+        if b.image:
+            try:
+                image_url = request.build_absolute_uri(b.image.url)
+            except Exception:
+                image_url = b.image.url
+        data.append({
+            'id': b.id,
+            'title': b.title,
+            'subtitle': b.subtitle,
+            'image_url': image_url,
+            'order': b.order,
+        })
+    return JsonResponse(data, safe=False)
 
 # ========== MESSAGES/NOTIFICATIONS VIEWS ==========
 

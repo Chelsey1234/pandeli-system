@@ -94,6 +94,15 @@ urlpatterns = [
          name='create_bulk_notification'),
     
     # ------------------------------------------
+    # BANNERS (app home screen carousel)
+    # ------------------------------------------
+    path('banners/', views.banner_list, name='banner_list'),
+    path('banners/add/', views.banner_add, name='banner_add'),
+    path('banners/<int:pk>/toggle/', views.banner_toggle, name='banner_toggle'),
+    path('banners/<int:pk>/delete/', views.banner_delete, name='banner_delete'),
+    path('api/banners/', views.banners_api, name='banners_api'),
+
+    # ------------------------------------------
     # PUBLIC PAGES (no login required)
     # ------------------------------------------
     path('privacy-policy/', views.privacy_policy, name='privacy_policy'),

@@ -426,3 +426,19 @@ class ImportHistory(models.Model):
     
     def __str__(self):
         return f"{self.import_type} - {self.created_at}"
+
+
+class Banner(models.Model):
+    title = models.CharField(max_length=200, blank=True, help_text="Optional title shown on banner")
+    subtitle = models.CharField(max_length=300, blank=True, help_text="Optional subtitle/tagline")
+    image = models.ImageField(upload_to='banners/', help_text="Promo banner image")
+    is_active = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0, help_text="Display order (lower = first)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', '-created_at']
+
+    def __str__(self):
+        return self.title or f"Banner #{self.pk}"
