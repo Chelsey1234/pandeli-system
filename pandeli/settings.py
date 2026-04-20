@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'storages',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
@@ -115,13 +116,36 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STORAGES = {
-    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
-    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
-}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Supabase Storage for persistent media files on Railway
+SUPABASE_URL = 'https://vjjtkbvgqkrkquepgymg.supabase.co'
+SUPABASE_BUCKET = 'media'
+SUPABASE_KEY = config('SUPABASE_SECRET_KEY', default='')
+
+# Use Supabase S3-compatible storage if key is configured
+if config('SUPABASE_SECRET_KEY', default=''):
+    AWS_ACCESS_KEY_ID = 'service_role'
+    AWS_SECRET_ACCESS_KEY = config('SUPABASE_SECRET_KEY', default='')
+    AWS_STORAGE_BUCKET_NAME = 'media'
+    AWS_S3_ENDPOINT_URL = 'https://vjjtkbvgqkrkquepgymg.supabase.co/storage/v1/s3'
+    AWS_S3_REGION_NAME = 'ap-northeast-1'
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_CUSTOM_DOMAIN = 'vjjtkbvgqkrkquepgymg.supabase.co/storage/v1/object/public/media'
+    MEDIA_URL = f'https://vjjtkbvgqkrkquepgymg.supabase.co/storage/v1/object/public/media/'
+    STORAGES = {
+        'default': {'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
+else:
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
