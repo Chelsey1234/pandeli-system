@@ -1,90 +1,143 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container-fluid">
-        <button type="button" id="sidebarCollapse" class="btn btn-dark">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <div class="ms-auto d-flex align-items-center">
-            <!-- Quick Actions -->
-            <div class="dropdown me-3">
-                <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-plus"></i> Quick Actions
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#newOrderModal">
-                        <i class="fas fa-shopping-cart me-2"></i>New Order
-                    </a></li>
-                    <li><a class="dropdown-item" href="{% url 'product_list' %}">
-                        <i class="fas fa-box me-2"></i>Add Product
-                    </a></li>
-                    <li><a class="dropdown-item" href="{% url 'pos' %}">
-                        <i class="fas fa-cash-register me-2"></i>Open POS
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{% url 'import_data' %}">
-                        <i class="fas fa-upload me-2"></i>Import Data
-                    </a></li>
-                    <li><a class="dropdown-item" href="{% url 'export_data' %}">
-                        <i class="fas fa-download me-2"></i>Export Data
-                    </a></li>
-                </ul>
-            </div>
-            
-            <!-- Notifications Dropdown -->
-            <div class="dropdown">
-                <button class="btn btn-outline-secondary dropdown-toggle position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown">
-                    <i class="fas fa-bell"></i>
-                    {% if unread_notifications_count > 0 %}
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            {{ unread_notifications_count }}
-                        </span>
-                    {% endif %}
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" style="width: 350px;" aria-labelledby="notificationDropdown">
-                    <li class="dropdown-header d-flex justify-content-between align-items-center">
-                        <span>Notifications</span>
-                        {% if unread_notifications_count > 0 %}
-                            <button class="btn btn-sm btn-link" onclick="NotificationManager.markAllAsRead()">
-                                <small>Mark all as read</small>
-                            </button>
-                        {% endif %}
-                    </li>
-                    <li><hr class="dropdown-divider"></li>
-                    <div style="max-height: 400px; overflow-y: auto;">
-                        {% for notification in recent_notifications %}
-                            <li>
-                                <a class="dropdown-item {% if not notification.is_read %}bg-light{% endif %}" 
-                                   href="{% url 'messages' %}?read={{ notification.id }}">
-                                    <div class="d-flex align-items-start">
-                                        <div class="flex-shrink-0 me-2">
-                                            {% if not notification.is_read %}
-                                                <span class="dot bg-primary" style="width: 8px; height: 8px; display: inline-block; border-radius: 50%;"></span>
-                                            {% else %}
-                                                <span style="width: 8px; height: 8px; display: inline-block;"></span>
-                                            {% endif %}
-                                        </div>
-                                        <div class="flex-grow-1">
-                                            <strong>{{ notification.title }}</strong>
-                                            <br>
-                                            <small>{{ notification.message|truncatechars:50 }}</small>
-                                            <br>
-                                            <small class="text-muted">
-                                                <i class="far fa-clock me-1"></i>{{ notification.created_at|timesince }} ago
-                                            </small>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                        {% empty %}
-                            <li><span class="dropdown-item text-muted text-center py-3">No notifications</span></li>
-                        {% endfor %}
-                    </div>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-center text-primary" href="{% url 'messages' %}">
-                        <i class="fas fa-envelope me-1"></i> View All Messages
-                    </a></li>
-                </ul>
+<nav style="background:#F5EDE8; border-bottom:1px solid #e8d5c8;" class="px-5 py-3 flex items-center shadow-sm">
+    <!-- Sidebar toggle -->
+    <button id="sidebarCollapse"
+            class="p-2 rounded-lg transition-all duration-200 flex items-center justify-center"
+            style="color:#7C4A2D; width:36px; height:36px;"
+            title="Toggle sidebar"
+            onmouseover="this.style.background='rgba(201,138,107,0.15)'"
+            onmouseout="this.style.background='transparent'">
+        <i id="sidebarToggleIcon" class="fas fa-bars text-base"></i>
+    </button>
+
+    <!-- Page breadcrumb hint -->
+    <span class="ml-3 text-sm font-medium hidden sm:block" style="color:#a86b4e;">
+        Pandeli
+    </span>
+
+    <div class="ml-auto flex items-center gap-2">
+
+        <!-- Quick Actions (dashboard only) -->
+        {% if request.resolver_match.url_name == 'dashboard' %}
+        <div class="relative">
+            <button onclick="document.getElementById('quickActionsMenu').classList.toggle('hidden')"
+                    class="flex items-center gap-2 px-3 py-2 text-sm rounded-lg font-medium transition-all"
+                    style="border:1.5px solid #C98A6B; color:#7C4A2D; background:transparent;"
+                    onmouseover="this.style.background='#C98A6B';this.style.color='#fff'"
+                    onmouseout="this.style.background='transparent';this.style.color='#7C4A2D'">
+                <i class="fas fa-plus text-xs"></i> Quick Actions
+                <i class="fas fa-chevron-down text-xs"></i>
+            </button>
+            <div class="hidden absolute right-0 mt-1 w-48 rounded-xl shadow-lg z-50 py-1 overflow-hidden"
+                 id="quickActionsMenu"
+                 style="background:#fff; border:1px solid #e8d5c8;">
+                <a href="{% url 'import_data' %}"
+                   class="flex items-center gap-2 px-4 py-2.5 text-sm transition-colors"
+                   style="color:#5c3520;"
+                   onmouseover="this.style.background='#fdf5f0'"
+                   onmouseout="this.style.background='transparent'">
+                    <i class="fas fa-upload w-4" style="color:#C98A6B;"></i> Import Data
+                </a>
+                <a href="{% url 'export_data' %}"
+                   class="flex items-center gap-2 px-4 py-2.5 text-sm transition-colors"
+                   style="color:#5c3520;"
+                   onmouseover="this.style.background='#fdf5f0'"
+                   onmouseout="this.style.background='transparent'">
+                    <i class="fas fa-download w-4" style="color:#C98A6B;"></i> Export Data
+                </a>
             </div>
         </div>
+        {% endif %}
+
+        <!-- Profile -->
+        {% if user.is_authenticated %}
+        <a href="{% url 'user_profile' %}"
+           class="p-2 rounded-lg transition-colors"
+           style="color:#7C4A2D;"
+           title="My profile"
+           onmouseover="this.style.background='rgba(201,138,107,0.15)'"
+           onmouseout="this.style.background='transparent'">
+            <i class="fas fa-user-circle text-lg"></i>
+        </a>
+        {% endif %}
+
+        <!-- Notifications -->
+        <div class="relative">
+            <button onclick="document.getElementById('notifDropdown').classList.toggle('hidden')"
+                    class="relative p-2 rounded-lg transition-colors"
+                    style="color:#7C4A2D;"
+                    onmouseover="this.style.background='rgba(201,138,107,0.15)'"
+                    onmouseout="this.style.background='transparent'">
+                <i class="fas fa-bell text-lg"></i>
+                {% if unread_notifications_count > 0 %}
+                <span class="absolute -top-0.5 -right-0.5 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                      style="background:#7C4A2D;">
+                    {{ unread_notifications_count }}
+                </span>
+                {% endif %}
+            </button>
+
+            <div id="notifDropdown"
+                 class="hidden absolute right-0 mt-1 w-80 rounded-xl shadow-xl z-50 overflow-hidden"
+                 style="background:#fff; border:1px solid #e8d5c8;">
+                <div class="flex items-center justify-between px-4 py-3" style="border-bottom:1px solid #f0e0d6;">
+                    <span class="font-semibold text-sm" style="color:#5c3520;">Notifications</span>
+                    {% if unread_notifications_count > 0 %}
+                    <button onclick="NotificationManager.markAllAsRead()"
+                            class="text-xs font-medium transition-colors"
+                            style="color:#7C4A2D;">
+                        Mark all as read
+                    </button>
+                    {% endif %}
+                </div>
+
+                <div class="max-h-80 overflow-y-auto">
+                    {% for notification in recent_notifications %}
+                    <a href="{% url 'messages' %}?read={{ notification.id }}"
+                       class="flex items-start gap-3 px-4 py-3 transition-colors"
+                       style="{% if not notification.is_read %}background:#fdf5f0;{% endif %}border-bottom:1px solid #faf0ea;"
+                       onmouseover="this.style.background='#fdf5f0'"
+                       onmouseout="this.style.background='{% if not notification.is_read %}#fdf5f0{% else %}transparent{% endif %}'">
+                        <div class="mt-1.5 flex-shrink-0">
+                            {% if not notification.is_read %}
+                            <span class="block w-2 h-2 rounded-full" style="background:#C98A6B;"></span>
+                            {% else %}
+                            <span class="block w-2 h-2 rounded-full bg-gray-200"></span>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold truncate" style="color:#3d2010;">{{ notification.title }}</p>
+                            <p class="text-xs mt-0.5 line-clamp-2" style="color:#8a6a5a;">{{ notification.message|truncatechars:60 }}</p>
+                            <p class="text-xs mt-1" style="color:#b89080;">
+                                <i class="far fa-clock mr-1"></i>{{ notification.created_at|timesince }} ago
+                            </p>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="px-4 py-6 text-center text-sm" style="color:#b89080;">
+                        <i class="fas fa-bell-slash text-2xl mb-2 block"></i>
+                        No notifications
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="px-4 py-2.5" style="border-top:1px solid #f0e0d6;">
+                    <a href="{% url 'messages' %}"
+                       class="flex items-center justify-center gap-2 text-sm font-medium py-1 transition-colors"
+                       style="color:#7C4A2D;">
+                        <i class="fas fa-envelope"></i> View All Messages
+                    </a>
+                </div>
+            </div>
+        </div>
+
     </div>
 </nav>
+
+<script>
+document.addEventListener('click', function(e) {
+    const notif = document.getElementById('notifDropdown');
+    const quick = document.getElementById('quickActionsMenu');
+    if (notif && !e.target.closest('[onclick*="notifDropdown"]') && !notif.contains(e.target)) notif.classList.add('hidden');
+    if (quick && !e.target.closest('[onclick*="quickActionsMenu"]') && !quick.contains(e.target)) quick.classList.add('hidden');
+});
+</script>

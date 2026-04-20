@@ -1,107 +1,111 @@
 {% load static %}
-<div class="modal fade" id="newOrderModal" tabindex="-1" aria-labelledby="newOrderModalLabel" aria-hidden="true">
+<!-- New Order Modal — Bootstrap JS modal API, Tailwind styling -->
+<div class="modal fade" id="newOrderModal" tabindex="-1" aria-labelledby="newOrderModalLabel" aria-hidden="true" style="display:none;">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="newOrderModalLabel">
-                    <i class="fas fa-shopping-cart me-2"></i>Create New Order
+        <div class="modal-content border-0 shadow-2xl" style="border-radius:1rem; overflow:hidden;">
+
+            <!-- Header -->
+            <div class="modal-header border-0 px-6 py-4 text-white" style="background:#C98A6B;">
+                <h5 class="modal-title font-semibold flex items-center gap-2" id="newOrderModalLabel">
+                    <i class="fas fa-shopping-cart"></i> Create New Order
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+
+            <!-- Body -->
+            <div class="modal-body p-5 bg-white">
                 <form id="newOrderForm">
                     {% csrf_token %}
-                    
-                    <!-- Order Type Only -->
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="orderType" class="form-label fw-bold">Order Type</label>
-                            <select class="form-select" name="order_type" id="orderType">
-                                <option value="walk_in" selected>🚶 Walk-in Customer</option>
-                                <option value="online">🌐 Online Order</option>
-                            </select>
-                        </div>
+
+                    <!-- Order Type -->
+                    <div class="mb-4">
+                        <label for="orderType" class="block text-sm font-medium text-gray-700 mb-1">Order Type</label>
+                        <select name="order_type" id="orderType"
+                                class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none"
+                                style="focus:border-color:#C98A6B;">
+                            <option value="walk_in" selected>🚶 Walk-in Customer</option>
+                            <option value="online">🌐 Online Order</option>
+                        </select>
                     </div>
-                    
+
                     <!-- Products Table -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Products</label>
-                        <div class="table-responsive" style="max-height: 300px;">
-                            <table class="table table-bordered table-hover" id="orderItems">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th style="width: 45%;">Product</th>
-                                        <th style="width: 15%;">Quantity</th>
-                                        <th style="width: 15%;">Price</th>
-                                        <th style="width: 15%;">Subtotal</th>
-                                        <th style="width: 10%;"></th>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Products</label>
+                        <div class="rounded-xl border border-gray-200 overflow-hidden" style="max-height:320px; overflow-y:auto;">
+                            <table class="w-full text-sm" id="orderItems" style="min-width:520px;">
+                                <thead class="bg-gray-50" style="position:sticky; top:0; z-index:1;">
+                                    <tr class="border-b border-gray-200">
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide" style="width:42%;">Product</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide" style="width:13%;">Qty</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide" style="width:18%;">Price</th>
+                                        <th class="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide" style="width:18%;">Subtotal</th>
+                                        <th class="px-3 py-2" style="width:9%;"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="orderItemsBody">
-                                    <tr class="item-row">
-                                        <td>
-                                            <select class="form-select product-select" required>
+                                    <tr class="item-row border-b border-gray-100">
+                                        <td class="px-3 py-2">
+                                            <select class="product-select w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 outline-none" required>
                                                 <option value="">-- Select Product --</option>
                                             </select>
                                         </td>
-                                        <td>
-                                            <input type="number" class="form-control quantity" min="1" value="1" required>
+                                        <td class="px-3 py-2">
+                                            <input type="number" class="quantity w-full px-2 py-1.5 text-sm rounded-lg border border-gray-200 outline-none" min="1" value="1" required>
                                         </td>
-                                        <td>
-                                            <div class="input-group">
-                                                <span class="input-group-text">$</span>
-                                                <input type="text" class="form-control price" readonly>
-                                            </div>
+                                        <td class="px-3 py-2">
+                                            <input type="text" class="price w-full px-2 py-1.5 text-sm rounded-lg border border-gray-100 bg-gray-50 text-gray-600" readonly>
                                         </td>
-                                        <td>
-                                            <div class="input-group">
-                                                <span class="input-group-text">$</span>
-                                                <input type="text" class="form-control subtotal" readonly>
-                                            </div>
+                                        <td class="px-3 py-2">
+                                            <input type="text" class="subtotal w-full px-2 py-1.5 text-sm rounded-lg border border-gray-100 bg-gray-50 text-gray-600" readonly>
                                         </td>
-                                        <td class="text-center">
-                                            <button type="button" class="btn btn-danger btn-sm remove-item" title="Remove item">
-                                                <i class="fas fa-trash"></i>
+                                        <td class="px-3 py-2 text-center">
+                                            <button type="button" class="remove-item p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                                                <i class="fas fa-trash text-xs"></i>
                                             </button>
                                         </td>
                                     </tr>
                                 </tbody>
-                                <tfoot class="table-light">
+                                <tfoot class="bg-gray-50 border-t border-gray-200">
                                     <tr>
-                                        <td colspan="3" class="text-end fw-bold">Total:</td>
-                                        <td>
-                                            <div class="input-group">
-                                                <span class="input-group-text">$</span>
-                                                <input type="text" class="form-control fw-bold text-primary" id="orderTotal" value="0.00" readonly>
-                                            </div>
+                                        <td colspan="3" class="px-3 py-2 text-right text-sm font-semibold text-gray-700">Total:</td>
+                                        <td class="px-3 py-2">
+                                            <input type="text" id="orderTotal" value="0.00" readonly
+                                                   class="w-full px-2 py-1.5 text-sm rounded-lg border border-gray-100 bg-gray-50 font-bold"
+                                                   style="color:#C98A6B;">
                                         </td>
                                         <td></td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
-                        <button type="button" class="btn btn-sm btn-success mt-2" id="addItem">
-                            <i class="fas fa-plus-circle me-1"></i> Add Item
+                        <button type="button" id="addItem"
+                                class="mt-2 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors"
+                                style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0;">
+                            <i class="fas fa-plus-circle mr-1"></i> Add Item
                         </button>
                     </div>
-                    
+
                     <!-- Notes -->
-                    <div class="mb-3">
-                        <label for="orderNotes" class="form-label fw-bold">Notes</label>
-                        <textarea class="form-control" id="orderNotes" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+                    <div>
+                        <label for="orderNotes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <textarea id="orderNotes" name="notes" rows="2" placeholder="Optional notes..."
+                                  class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 outline-none resize-none"></textarea>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i> Cancel
+
+            <!-- Footer -->
+            <div class="modal-footer border-0 bg-gray-50 px-5 py-4 gap-2">
+                <button type="button" data-bs-dismiss="modal"
+                        class="px-4 py-2 text-sm rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 font-medium transition-colors border-0">
+                    <i class="fas fa-times mr-1"></i> Cancel
                 </button>
-                <button type="button" class="btn btn-primary" id="saveOrder">
-                    <i class="fas fa-check me-1"></i> Create Order
+                <button type="button" id="saveOrder"
+                        class="px-4 py-2 text-sm rounded-xl text-white font-medium border-0 transition-all"
+                        style="background:#C98A6B;">
+                    <i class="fas fa-check mr-1"></i> Create Order
                 </button>
             </div>
         </div>
     </div>
 </div>
-
-{# CSS/JS for this modal are loaded in base.html (once) #}

@@ -3,93 +3,70 @@
 {% block title %}Import History{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Import History</h2>
-        <a href="{% url 'import_data' %}" class="btn btn-primary">
-            <i class="fas fa-upload"></i> New Import
-        </a>
-    </div>
+<div class="page-header">
+    <h2 class="pg-heading"><i class="fas fa-history mr-2" style="color:#C98A6B;"></i>Import History</h2>
+    <a href="{% url 'import_data' %}" class="btn-primary"><i class="fas fa-upload"></i> New Import</a>
+</div>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>File Name</th>
-                            <th>Status</th>
-                            <th>Records</th>
-                            <th>Success</th>
-                            <th>Failed</th>
-                            <th>Imported By</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for import in imports %}
-                        <tr>
-                            <td>{{ import.created_at|date:"Y-m-d H:i" }}</td>
-                            <td>
-                                <span class="badge bg-info">{{ import.get_import_type_display }}</span>
-                            </td>
-                            <td>{{ import.file_name }}</td>
-                            <td>
-                                <span class="badge bg-{% if import.status == 'success' %}success{% elif import.status == 'failed' %}danger{% else %}warning{% endif %}">
-                                    {{ import.status|title }}
-                                </span>
-                            </td>
-                            <td>{{ import.total_records }}</td>
-                            <td class="text-success">{{ import.success_records }}</td>
-                            <td class="text-danger">{{ import.failed_records }}</td>
-                            <td>{{ import.imported_by.username }}</td>
-                            <td>
-                                {% if import.error_log %}
-                                <button class="btn btn-sm btn-warning" onclick="showErrors('{{ import.id }}')">
-                                    <i class="fas fa-exclamation-triangle"></i> View Errors
-                                </button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="9" class="text-center text-muted">
-                                No import history found
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th><th>Type</th><th>File Name</th><th>Status</th>
+                    <th>Records</th><th>Success</th><th>Failed</th><th>Imported By</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for import in imports %}
+                <tr>
+                    <td class="muted">{{ import.created_at|date:"Y-m-d H:i" }}</td>
+                    <td><span class="pill pill-brand">{{ import.get_import_type_display }}</span></td>
+                    <td class="font-medium">{{ import.file_name }}</td>
+                    <td>
+                        <span class="pill {% if import.status == 'success' %}pill-green{% elif import.status == 'failed' %}pill-red{% else %}pill-yellow{% endif %}">
+                            {{ import.status|title }}
+                        </span>
+                    </td>
+                    <td>{{ import.total_records }}</td>
+                    <td class="font-semibold" style="color:#276749;">{{ import.success_records }}</td>
+                    <td class="font-semibold" style="color:#c53030;">{{ import.failed_records }}</td>
+                    <td class="muted">{{ import.imported_by.username }}</td>
+                    <td>
+                        {% if import.error_log %}
+                        <button onclick="showErrors('{{ import.id }}')" class="btn-icon btn-icon-yellow" title="View Errors">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="text-center py-10 muted">No import history found</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
 <!-- Error Modal -->
-<div class="modal fade" id="errorModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Import Errors</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="errorModal" tabindex="-1" style="display:none;">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius:0.875rem;overflow:hidden;">
+            <div class="modal-header border-0 px-5 py-4 text-white" style="background:#C98A6B;">
+                <h5 class="modal-title card-title text-white">Import Errors</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <pre id="errorLog" style="max-height: 400px; overflow-y: auto;"></pre>
+            <div class="modal-body p-5">
+                <pre id="errorLog" class="text-xs rounded-xl p-4 overflow-y-auto" style="max-height:400px;background:#fdf5f0;color:#3d2010;border:1px solid #ecddd5;"></pre>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <div class="modal-footer border-0 px-5 py-4" style="background:#fdf5f0;">
+                <button type="button" data-bs-dismiss="modal" class="btn-secondary">Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function showErrors(importId) {
-    // This would need an API endpoint to get error logs
-    // For now, we'll use a static example
-    alert('Error log functionality coming soon!');
-}
+function showErrors(importId) { alert('Error log functionality coming soon!'); }
 </script>
 {% endblock %}

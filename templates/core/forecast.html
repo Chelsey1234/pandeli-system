@@ -1,156 +1,482 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
 {% block title %}Sales Forecast{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Sales Forecast</h2>
-        <form method="post" action="{% url 'run_forecast' %}" class="d-flex gap-2">
-            {% csrf_token %}
-            <select name="product_id" class="form-select" style="width: 200px;">
-                <option value="">All Products</option>
-                {% for product in products %}
-                    <option value="{{ product.id }}">{{ product.name }}</option>
-                {% endfor %}
-            </select>
-            <select name="days" class="form-select" style="width: 110px;">
-                <option value="7">7 Days</option>
-                <option value="14" selected>14 Days</option>
-                <option value="30">30 Days</option>
-                <option value="60">60 Days</option>
-                <option value="90">90 Days</option>
-            </select>
-            <button type="submit" class="btn btn-primary text-nowrap">
-                <i class="fas fa-chart-line"></i> Generate Forecast
-            </button>
-        </form>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <h2 class="pg-heading"><i class="fas fa-chart-area mr-2" style="color:#C98A6B;"></i>Sales Forecast</h2>
+        <p class="muted-text mt-0.5">Auto-generated forecast based on your sales history</p>
+    </div>
+    <div class="flex gap-2 items-center">
+        <select id="filterProduct" class="form-input" style="width:auto;">
+            <option value="">All Products</option>
+            {% for product in products %}
+                <option value="{{ product.id }}">{{ product.name }}</option>
+            {% endfor %}
+        </select>
+        <select id="filterDays" class="form-input" style="width:auto;">
+            <option value="7">7 Days</option>
+            <option value="30" selected>30 Days</option>
+            <option value="60">60 Days</option>
+            <option value="90">90 Days</option>
+        </select>
+        <button id="refreshBtn" onclick="runForecast()" class="btn-primary">
+            <i class="fas fa-sync-alt" id="refreshIcon"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="forecastLoading" class="card mb-5" style="display:none;">
+    <div class="card-body text-center py-12">
+        <div class="inline-flex flex-col items-center gap-4">
+            <div class="forecast-spinner"></div>
+            <p class="label-text">Generating forecast...</p>
+            <div class="forecast-progress-bar">
+                <div class="forecast-progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main content (hidden until loaded) -->
+<div id="forecastContent" style="opacity:0;transition:opacity 0.5s ease;">
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+        <div class="card card-body text-center" style="animation:fadeUp 0.4s ease 0.05s both;">
+            <p class="label-text mb-1">Forecasted Days</p>
+            <p class="text-3xl font-bold" style="color:#7C4A2D;" id="statDays">—</p>
+            <p class="muted-text mt-1">upcoming days</p>
+        </div>
+        <div class="card card-body text-center" style="animation:fadeUp 0.4s ease 0.1s both;">
+            <p class="label-text mb-1">Avg Daily Units</p>
+            <p class="text-3xl font-bold" style="color:#C98A6B;" id="statAvg">—</p>
+            <p class="muted-text mt-1">predicted per day</p>
+        </div>
+        <div class="card card-body text-center" style="animation:fadeUp 0.4s ease 0.15s both;">
+            <p class="label-text mb-1">Confidence Level</p>
+            <p class="text-3xl font-bold" style="color:#38a169;">95%</p>
+            <p class="muted-text mt-1">statistical confidence</p>
+        </div>
     </div>
 
-    <div class="row">
-        <!-- Forecast Chart -->
-        <div class="col-md-8 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Sales Forecast vs Historical</h5>
+    <!-- Chart + mini summary -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+        <div class="card overflow-hidden lg:col-span-2" style="animation:fadeUp 0.4s ease 0.2s both;">
+            <div class="card-header">
+                <span class="card-title flex items-center gap-2">
+                    <i class="fas fa-chart-line" style="color:#C98A6B;"></i> Forecast vs Historical
+                </span>
+                <div class="flex gap-1">
+                    <span class="flex items-center gap-1 muted-text text-xs">
+                        <span class="inline-block w-6 h-0.5 rounded" style="background:#C98A6B;"></span> Historical
+                    </span>
+                    <span class="flex items-center gap-1 muted-text text-xs ml-3">
+                        <span class="inline-block w-6 border-t-2 border-dashed" style="border-color:#7C4A2D;"></span> Forecast
+                    </span>
                 </div>
-                <div class="card-body">
-                    <canvas id="forecastChart" height="300"></canvas>
+            </div>
+            <div class="card-body">
+                <div style="position:relative;min-height:300px;">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+                <div id="chartNoData" class="hidden text-center py-10 muted-text">
+                    <i class="fas fa-chart-area text-3xl mb-3 block" style="color:#e8d5c8;"></i>
+                    No forecast data yet — generating now…
                 </div>
             </div>
         </div>
 
-        <!-- Forecast Summary -->
-        <div class="col-md-4 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Forecast Summary</h5>
+        <!-- Trend indicators -->
+        <div class="card overflow-hidden" style="animation:fadeUp 0.4s ease 0.25s both;">
+            <div class="card-header"><span class="card-title">Trend Insights</span></div>
+            <div class="card-body space-y-4" id="trendInsights">
+                <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#fdf5f0;">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#C98A6B;">
+                        <i class="fas fa-arrow-trend-up text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="label-text">Peak Day</p>
+                        <p class="body-text font-semibold" id="insightPeak">—</p>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="list-group">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            Total Forecast Entries
-                            <span class="badge bg-primary rounded-pill">{{ forecasts|length }}</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            Total Predicted Units
-                            <span class="badge bg-info rounded-pill">{{ total_predicted }}</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            Avg Daily (per product)
-                            <span class="badge bg-success rounded-pill">{{ avg_daily }}</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            Model
-                            <span class="badge bg-secondary rounded-pill">Moving Average</span>
-                        </div>
+                <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#fdf5f0;">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#7C4A2D;">
+                        <i class="fas fa-boxes-stacked text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="label-text">Total Predicted</p>
+                        <p class="body-text font-semibold" id="insightTotal">—</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#fdf5f0;">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style="background:#a86b4e;">
+                        <i class="fas fa-calendar-check text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <p class="label-text">Forecast Period</p>
+                        <p class="body-text font-semibold" id="insightPeriod">—</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Forecast Table -->
-    <div class="card">
+    <!-- Detailed Table -->
+    <div class="card overflow-hidden" style="animation:fadeUp 0.4s ease 0.3s both;">
         <div class="card-header">
-            <h5>Detailed Forecast</h5>
+            <span class="card-title">Detailed Forecast</span>
+            <span class="pill pill-brand" id="tableCount">0 rows</span>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Date</th>
-                            <th>Predicted Qty</th>
-                            <th>Confidence Range</th>
-                            <th>Model</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for forecast in forecasts %}
-                        <tr>
-                            <td>{{ forecast.product.name }}</td>
-                            <td>{{ forecast.forecast_date|date:"M d, Y" }}</td>
-                            <td class="fw-bold text-primary">{{ forecast.predicted_quantity }}</td>
-                            <td>{{ forecast.confidence_lower }} – {{ forecast.confidence_upper }} <small class="text-muted">(95% CI)</small></td>
-                            <td><span class="badge bg-info">{{ forecast.model_used }}</span></td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
-                                No forecasts yet. Click <strong>Generate Forecast</strong> to create predictions.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Date</th>
+                        <th>Predicted Qty</th>
+                        <th>Confidence Range</th>
+                        <th>Model</th>
+                    </tr>
+                </thead>
+                <tbody id="forecastTableBody">
+                    <tr><td colspan="5" class="text-center py-8 muted-text">Loading…</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
-</div>
+
+</div><!-- /forecastContent -->
+
+<style>
+/* Spinner */
+.forecast-spinner {
+    width: 48px; height: 48px;
+    border: 4px solid #ecddd5;
+    border-top-color: #7C4A2D;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+/* Progress bar */
+.forecast-progress-bar {
+    width: 200px; height: 4px;
+    background: #ecddd5; border-radius: 2px; overflow: hidden;
+}
+.forecast-progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #C98A6B, #7C4A2D);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    animation: progressPulse 1.5s ease-in-out infinite;
+}
+@keyframes progressPulse {
+    0%,100% { opacity:1; } 50% { opacity:0.6; }
+}
+/* Counter animation */
+.count-up { transition: all 0.5s ease; }
+</style>
+
+{% endblock %}
 
 {% block extra_js %}
 <script>
-    var ctx = document.getElementById('forecastChart').getContext('2d');
-    var forecastChart = new Chart(ctx, {
+var forecastChart = null;
+var csrfToken = '{{ csrf_token }}';
+
+// ── Auto-run on page load ─────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    runForecast();
+
+    // Re-run when filters change
+    document.getElementById('filterProduct').addEventListener('change', runForecast);
+    document.getElementById('filterDays').addEventListener('change', runForecast);
+});
+
+function runForecast() {
+    var productId = document.getElementById('filterProduct').value;
+    var days      = document.getElementById('filterDays').value;
+    var btn       = document.getElementById('refreshBtn');
+    var icon      = document.getElementById('refreshIcon');
+
+    // Show loading
+    document.getElementById('forecastLoading').style.display = '';
+    document.getElementById('forecastContent').style.opacity = '0';
+    btn.disabled = true;
+    icon.className = 'fas fa-spinner fa-spin';
+
+    // Animate progress bar
+    var fill = document.getElementById('progressFill');
+    var prog = 0;
+    var progInterval = setInterval(function() {
+        prog = Math.min(prog + Math.random() * 12, 88);
+        fill.style.width = prog + '%';
+    }, 200);
+
+    // 1. POST to run_forecast
+    var formData = new FormData();
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    if (productId) formData.append('product_id', productId);
+    formData.append('days', days);
+
+    fetch('{% url "run_forecast" %}', { method: 'POST', body: formData })
+        .then(function() {
+            // 2. Fetch updated forecast data
+            var url = '/forecast/data/?days=' + days + (productId ? '&product_id=' + productId : '');
+            return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            clearInterval(progInterval);
+            fill.style.width = '100%';
+            setTimeout(function() {
+                document.getElementById('forecastLoading').style.display = 'none';
+                renderForecast(data);
+                document.getElementById('forecastContent').style.opacity = '1';
+                btn.disabled = false;
+                icon.className = 'fas fa-sync-alt';
+            }, 400);
+        })
+        .catch(function(e) {
+            console.error(e);
+            clearInterval(progInterval);
+            // Fallback: use server-rendered data
+            document.getElementById('forecastLoading').style.display = 'none';
+            renderFallback();
+            document.getElementById('forecastContent').style.opacity = '1';
+            btn.disabled = false;
+            icon.className = 'fas fa-sync-alt';
+        });
+}
+
+function renderForecast(data) {
+    var forecasts       = data.forecasts       || [];
+    var forecastDates   = data.forecast_dates  || [];
+    var forecastValues  = data.forecast_values || [];
+    var historicalDates = data.historical_dates || [];
+    var historicalValues= data.historical_values|| [];
+
+    // Stats
+    var total = forecastValues.reduce(function(a,b){return a+b;},0);
+    var avg   = forecasts.length ? (total / forecasts.length).toFixed(1) : 0;
+    animateCount('statDays', forecasts.length);
+    animateCount('statAvg',  parseFloat(avg));
+
+    // Insights
+    var maxVal  = Math.max.apply(null, forecastValues) || 0;
+    var maxIdx  = forecastValues.indexOf(maxVal);
+    document.getElementById('insightPeak').textContent   = forecastDates[maxIdx] || '—';
+    document.getElementById('insightTotal').textContent  = total + ' units';
+    document.getElementById('insightPeriod').textContent = forecastDates[0] + ' → ' + (forecastDates[forecastDates.length-1] || '—');
+    document.getElementById('tableCount').textContent    = forecasts.length + ' rows';
+
+    // Chart
+    buildChart(historicalDates, historicalValues, forecastDates, forecastValues);
+
+    // Table
+    var tbody = document.getElementById('forecastTableBody');
+    if (!forecasts.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 muted-text">No forecast data. Add order history first.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = forecasts.map(function(f, i) {
+        return '<tr style="animation:fadeUp 0.3s ease ' + (i * 0.03) + 's both;">' +
+            '<td class="font-medium">' + (f.product_name || '—') + '</td>' +
+            '<td class="muted">' + f.forecast_date + '</td>' +
+            '<td><span class="pill pill-brand">' + f.predicted_quantity + '</span></td>' +
+            '<td class="muted-text">' + f.confidence_lower + ' – ' + f.confidence_upper +
+                ' <span style="font-size:10px;color:#b89080;">(95% CI)</span></td>' +
+            '<td><span class="pill pill-gray">' + (f.model_used || 'MA') + '</span></td>' +
+            '</tr>';
+    }).join('');
+}
+
+function renderFallback() {
+    // Use Django-rendered data as fallback
+    var forecastDates    = {{ forecast_dates|safe }};
+    var forecastValues   = {{ forecast_values|safe }};
+    var historicalDates  = {{ historical_dates|safe }};
+    var historicalValues = {{ historical_values|safe }};
+    var forecasts        = [{% for f in forecasts %}
+        { product_name: "{{ f.product.name|escapejs }}", forecast_date: "{{ f.forecast_date|date:'Y-m-d' }}",
+          predicted_quantity: {{ f.predicted_quantity }}, confidence_lower: {{ f.confidence_lower }},
+          confidence_upper: {{ f.confidence_upper }}, model_used: "{{ f.model_used }}" }{% if not forloop.last %},{% endif %}
+    {% endfor %}];
+
+    renderForecast({
+        forecasts: forecasts,
+        forecast_dates: forecastDates,
+        forecast_values: forecastValues,
+        historical_dates: historicalDates,
+        historical_values: historicalValues
+    });
+}
+
+function buildChart(histDates, histValues, fcDates, fcValues) {
+    var canvas = document.getElementById('forecastChart');
+    if (!canvas) return;
+    if (forecastChart) { forecastChart.destroy(); forecastChart = null; }
+
+    var ctx = canvas.getContext('2d');
+
+    var gradHist = ctx.createLinearGradient(0, 0, 0, 300);
+    gradHist.addColorStop(0,   'rgba(215,48,39,0.3)');
+    gradHist.addColorStop(1,   'rgba(201,138,107,0)');
+
+    var gradFc = ctx.createLinearGradient(0, 0, 0, 300);
+    gradFc.addColorStop(0,   'rgba(69,117,180,0.2)');
+    gradFc.addColorStop(1,   'rgba(124,74,45,0)');
+
+    var allDates = Array.from(new Set(histDates.concat(fcDates))).sort();
+
+    function mapToLabels(dates, values, labels) {
+        var map = {};
+        dates.forEach(function(d,i){ map[d] = values[i]; });
+        return labels.map(function(d){ return map[d] != null ? map[d] : null; });
+    }
+
+    var histMapped = mapToLabels(histDates, histValues, allDates);
+    var fcMapped   = mapToLabels(fcDates,   fcValues,   allDates);
+    var totalPoints = allDates.length;
+    var delayPerPt  = 1400 / totalPoints;
+    var prevY = [{}, {}];
+
+    forecastChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: {{ forecast_dates|safe }},
-            datasets: [{
-                label: 'Historical Sales',
-                data: {{ historical_values|safe }},
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                tension: 0.3,
-                fill: true,
-            }, {
-                label: 'Forecasted Sales',
-                data: {{ forecast_values|safe }},
-                borderColor: 'rgb(255, 99, 132)',
-                backgroundColor: 'rgba(255, 99, 132, 0.05)',
-                borderDash: [5, 5],
-                tension: 0.3,
-                fill: true,
-            }]
+            labels: allDates,
+            datasets: [
+                {
+                    label: 'Historical Sales',
+                    data: histMapped,
+                    borderColor: '#d73027',
+                    backgroundColor: gradHist,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#d73027',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 8,
+                    tension: 0.4,
+                    fill: true,
+                    spanGaps: false
+                },
+                {
+                    label: 'Forecasted Sales',
+                    data: fcMapped,
+                    borderColor: '#4575b4',
+                    backgroundColor: gradFc,
+                    borderWidth: 2.5,
+                    borderDash: [6, 4],
+                    pointBackgroundColor: '#4575b4',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 8,
+                    tension: 0.4,
+                    fill: true,
+                    spanGaps: false
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            // ── Sequential point-by-point animation (Chart.js 3 advanced) ──
+            animation: {
+                x: {
+                    type: 'number',
+                    easing: 'linear',
+                    duration: delayPerPt,
+                    from: NaN,
+                    delay: function(ctx) {
+                        if (ctx.type !== 'data' || ctx.xStarted) return 0;
+                        ctx.xStarted = true;
+                        return ctx.datasetIndex * (totalPoints * delayPerPt * 0.3) + ctx.index * delayPerPt;
+                    }
+                },
+                y: {
+                    type: 'number',
+                    easing: 'easeInOutQuart',
+                    duration: delayPerPt,
+                    from: function(ctx) {
+                        if (ctx.index === 0) return ctx.chart.scales.y.getPixelForValue(0);
+                        return prevY[ctx.datasetIndex][ctx.index - 1];
+                    },
+                    delay: function(ctx) {
+                        if (ctx.type !== 'data' || ctx.yStarted) return 0;
+                        ctx.yStarted = true;
+                        return ctx.datasetIndex * (totalPoints * delayPerPt * 0.3) + ctx.index * delayPerPt;
+                    }
+                }
+            },
+            interaction: { mode: 'index', intersect: false },
             plugins: {
-                legend: { position: 'top' }
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#313695',
+                    titleColor: '#fee090',
+                    bodyColor: '#fff',
+                    borderColor: '#d73027',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    callbacks: {
+                        label: function(ctx) {
+                            if (ctx.raw == null) return null;
+                            return ' ' + ctx.dataset.label + ': ' + ctx.raw + ' units';
+                        }
+                    }
+                }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    title: { display: true, text: 'Quantity' }
+                    grid: { color: 'rgba(69,117,180,0.08)', drawBorder: false },
+                    border: { dash: [4,4], display: false },
+                    ticks: { color: '#74add1', stepSize: 1, font: { size: 11 } },
+                    title: { display: true, text: 'Quantity', color: '#a86b4e', font: { size: 11 } }
                 },
                 x: {
-                    ticks: { maxTicksLimit: 14 }
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: { color: '#74add1', maxRotation: 35, font: { size: 10 } }
                 }
             }
-        }
+        },
+        plugins: [{
+            id: 'captureY',
+            afterDatasetsDraw: function(chart) {
+                chart.data.datasets.forEach(function(_, di) {
+                    var meta = chart.getDatasetMeta(di);
+                    meta.data.forEach(function(pt, i) {
+                        prevY[di][i] = pt.y;
+                    });
+                });
+            }
+        }]
     });
+}
+
+// Animated counter
+function animateCount(id, target) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var start = 0;
+    var duration = 700;
+    var startTime = null;
+    function step(ts) {
+        if (!startTime) startTime = ts;
+        var progress = Math.min((ts - startTime) / duration, 1);
+        var ease = 1 - Math.pow(1 - progress, 3);
+        el.textContent = (target % 1 === 0) ? Math.round(start + (target - start) * ease) : (start + (target - start) * ease).toFixed(1);
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
 </script>
-{% endblock %}
 {% endblock %}

@@ -3,93 +3,68 @@
 {% block title %}Import Data{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <h2 class="mb-4">Import Data</h2>
+<div class="page-header">
+    <h2 class="pg-heading"><i class="fas fa-file-import mr-2" style="color:#C98A6B;"></i>Import Data</h2>
+</div>
 
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Upload File</h5>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <!-- Upload Card -->
+    <div class="card">
+        <div class="card-header"><span class="card-title">Upload File</span></div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" id="importForm" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="form-label">Import Type</label>
+                    <select id="importType" name="import_type" required class="form-input">
+                        <option value="">Select Type</option>
+                        <option value="product">Products</option>
+                        <option value="customer">Customers</option>
+                        <option value="inventory">Inventory</option>
+                        <option value="sales">Sales Data (Historical)</option>
+                    </select>
                 </div>
-                <div class="card-body">
-                    <form method="post" enctype="multipart/form-data" id="importForm">
-                        {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label for="importType" class="form-label">Import Type</label>
-                            <select class="form-control" id="importType" name="import_type" required>
-                                <option value="">Select Type</option>
-                                <option value="product">Products</option>
-                                <option value="customer">Customers</option>
-                                <option value="inventory">Inventory</option>
-                                <option value="sales">Sales Data (Historical - columns: product_code, quantity)</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="files" class="form-label">Select File(s) - Multiple CSV/Excel</label>
-                            <input type="file" class="form-control" id="files" name="files" accept=".csv,.xlsx,.xls" multiple>
-                            <small class="text-muted">Upload one or more CSV or Excel (.xlsx, .xls) files. Errors will generate a downloadable report.</small>
-                        </div>
-
-                        <div class="mb-3" id="templateInfo" style="display: none;">
-                            <div class="alert alert-info">
-                                <h6>Required Columns:</h6>
-                                <ul id="requiredColumns"></ul>
-                                <a href="#" id="downloadTemplate" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-download"></i> Download CSV Template
-                                </a>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary" id="uploadBtn">
-                            <i class="fas fa-upload"></i> Upload and Import
-                        </button>
-                        <a href="{% url 'import_history' %}" class="btn btn-info">
-                            <i class="fas fa-history"></i> View Import History
+                <div>
+                    <label class="form-label">Select File(s) — CSV or Excel</label>
+                    <input type="file" id="files" name="files" accept=".csv,.xlsx,.xls" multiple class="form-input">
+                    <p class="muted-text mt-1">Upload one or more CSV or Excel files.</p>
+                </div>
+                <div id="templateInfo" class="hidden">
+                    <div class="rounded-xl p-4" style="background:#fdf5f0;border:1px solid #ecddd5;">
+                        <p class="label-text mb-2">Required Columns:</p>
+                        <ul id="requiredColumns" class="muted-text list-disc list-inside space-y-0.5 mb-3"></ul>
+                        <a href="#" id="downloadTemplate" class="btn-ghost text-xs px-2 py-1">
+                            <i class="fas fa-download"></i> Download CSV Template
                         </a>
-                    </form>
+                    </div>
                 </div>
+                <div class="flex gap-3">
+                    <button type="submit" id="uploadBtn" class="btn-primary"><i class="fas fa-upload"></i> Upload and Import</button>
+                    <a href="{% url 'import_history' %}" class="btn-secondary"><i class="fas fa-history"></i> History</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Instructions Card -->
+    <div class="card">
+        <div class="card-header"><span class="card-title">Import Instructions</span></div>
+        <div class="card-body space-y-4">
+            <div>
+                <p class="label-text mb-1">Products</p>
+                <p class="muted-text"><code class="px-1 rounded text-xs" style="background:#fdf5f0;">code</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">name</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">category</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">price</code> — required. <code class="px-1 rounded text-xs" style="background:#fdf5f0;">cost</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">stock</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">description</code> — optional.</p>
             </div>
-
-            <!-- Instructions -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5>Import Instructions</h5>
-                </div>
-                <div class="card-body">
-                    <h6>Products Import:</h6>
-                    <ul>
-                        <li><code>code</code> - Unique product code (required)</li>
-                        <li><code>name</code> - Product name (required)</li>
-                        <li><code>category</code> - bread/pastries/croissants/beverages/spread (required)</li>
-                        <li><code>price</code> - Selling price (required)</li>
-                        <li><code>cost</code> - Cost price (optional)</li>
-                        <li><code>stock</code> - Initial stock quantity (optional)</li>
-                        <li><code>description</code> - Product description (optional)</li>
-                    </ul>
-
-                    <h6>Customers Import:</h6>
-                    <ul>
-                        <li><code>name</code> - Customer name (required)</li>
-                        <li><code>email</code> - Email address (required, unique)</li>
-                        <li><code>phone</code> - Phone number (required)</li>
-                        <li><code>address</code> - Customer address (optional)</li>
-                    </ul>
-
-                    <h6>Inventory Import:</h6>
-                    <ul>
-                        <li><code>product_code</code> - Product code (required)</li>
-                        <li><code>new_stock</code> - New stock quantity (required)</li>
-                    </ul>
-
-                    <h6>Sales Data (Historical):</h6>
-                    <ul>
-                        <li><code>product_code</code> - Product code (required)</li>
-                        <li><code>quantity</code> - Quantity sold (required)</li>
-                    </ul>
-                </div>
+            <div>
+                <p class="label-text mb-1">Customers</p>
+                <p class="muted-text"><code class="px-1 rounded text-xs" style="background:#fdf5f0;">name</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">email</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">phone</code> — required. <code class="px-1 rounded text-xs" style="background:#fdf5f0;">address</code> — optional.</p>
+            </div>
+            <div>
+                <p class="label-text mb-1">Inventory</p>
+                <p class="muted-text"><code class="px-1 rounded text-xs" style="background:#fdf5f0;">product_code</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">new_stock</code> — required.</p>
+            </div>
+            <div>
+                <p class="label-text mb-1">Sales Data (Historical)</p>
+                <p class="muted-text"><code class="px-1 rounded text-xs" style="background:#fdf5f0;">product_code</code>, <code class="px-1 rounded text-xs" style="background:#fdf5f0;">quantity</code> — required.</p>
             </div>
         </div>
     </div>
@@ -97,50 +72,25 @@
 
 <script>
 document.getElementById('importType').addEventListener('change', function() {
-    var type = this.value;
-    var templateInfo = document.getElementById('templateInfo');
-    var requiredColumns = document.getElementById('requiredColumns');
-    
-    if (type) {
-        templateInfo.style.display = 'block';
-        var columns = [];
-        var templateUrl = '';
-        
-        switch(type) {
-            case 'product':
-                columns = ['code', 'name', 'category', 'price', 'cost', 'stock', 'description'];
-                templateUrl = '{% url "download_import_template" "product" %}';
-                break;
-            case 'customer':
-                columns = ['name', 'email', 'phone', 'address'];
-                templateUrl = '{% url "download_import_template" "customer" %}';
-                break;
-            case 'inventory':
-                columns = ['product_code', 'new_stock'];
-                templateUrl = '{% url "download_import_template" "inventory" %}';
-                break;
-        case 'sales':
-                columns = ['product_code', 'quantity'];
-                templateUrl = '{% url "download_import_template" "sales" %}';
-                break;
-        }
-        
-        requiredColumns.innerHTML = columns.map(col => '<li><code>' + col + '</code></li>').join('');
-        document.getElementById('downloadTemplate').href = templateUrl;
-    } else {
-        templateInfo.style.display = 'none';
-    }
+    const type = this.value;
+    const info = document.getElementById('templateInfo');
+    if (!type) { info.classList.add('hidden'); return; }
+    info.classList.remove('hidden');
+    const map = {
+        product:   { cols: ['code','name','category','price','cost','stock','description'], url: '{% url "download_import_template" "product" %}' },
+        customer:  { cols: ['name','email','phone','address'], url: '{% url "download_import_template" "customer" %}' },
+        inventory: { cols: ['product_code','new_stock'], url: '{% url "download_import_template" "inventory" %}' },
+        sales:     { cols: ['product_code','quantity'], url: '{% url "download_import_template" "sales" %}' },
+    };
+    const entry = map[type] || { cols: [], url: '#' };
+    document.getElementById('requiredColumns').innerHTML = entry.cols.map(c => `<li><code style="background:#fdf5f0;padding:0 4px;border-radius:3px;font-size:11px;">${c}</code></li>`).join('');
+    document.getElementById('downloadTemplate').href = entry.url;
 });
-
 document.getElementById('importForm').addEventListener('submit', function(e) {
-    var files = document.getElementById('files').files;
-    if (!files || files.length === 0) {
-        e.preventDefault();
-        alert('Please select at least one file.');
-        return false;
-    }
-    document.getElementById('uploadBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-    document.getElementById('uploadBtn').disabled = true;
+    if (!document.getElementById('files').files.length) { e.preventDefault(); alert('Please select at least one file.'); return; }
+    const btn = document.getElementById('uploadBtn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    btn.disabled = true;
 });
 </script>
 {% endblock %}

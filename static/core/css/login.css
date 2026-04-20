@@ -8,7 +8,7 @@
 }
 
 body {
-	background: url('/static/core/images/bg.jpg');
+	background: url('\static\core\images\bakeshop.jpeg');
 	background-size: cover;
 	background-position: center;
 	background-repeat: no-repeat;

@@ -1,0 +1,76 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="pg-heading"><i class="fas fa-user-circle mr-2" style="color:#C98A6B;"></i>Profile</h2>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <!-- Avatar card -->
+    <div class="card text-center">
+        <div class="card-body">
+            {% if profile.profile_picture %}
+            <img src="{{ profile.profile_picture.url }}" alt="" class="profile-avatar-lg mx-auto mb-4">
+            {% else %}
+            <div class="profile-avatar-lg profile-avatar-lg--placeholder mx-auto mb-4" aria-hidden="true">
+                {{ request.user.username|slice:":1"|upper }}
+            </div>
+            {% endif %}
+            <p class="body-text font-semibold text-base">{{ user_display_name }}</p>
+            <p class="muted-text mt-0.5">@{{ request.user.username }}</p>
+            <span class="pill pill-brand mt-2 inline-block">{{ role_label }}</span>
+            <p class="muted-text mt-3">Member since {{ request.user.date_joined|date:"F j, Y" }}</p>
+        </div>
+    </div>
+
+    <!-- Edit form -->
+    <div class="lg:col-span-2 card">
+        <div class="card-header"><span class="card-title">Edit Profile</span></div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" novalidate class="space-y-4">
+                {% csrf_token %}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label" for="id_first_name">First name</label>
+                        {{ user_form.first_name }}
+                        {% if user_form.first_name.errors %}<p class="muted-text mt-1" style="color:#c53030;">{{ user_form.first_name.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label class="form-label" for="id_last_name">Last name</label>
+                        {{ user_form.last_name }}
+                        {% if user_form.last_name.errors %}<p class="muted-text mt-1" style="color:#c53030;">{{ user_form.last_name.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label" for="id_email">Email</label>
+                    {{ user_form.email }}
+                    {% if user_form.email.errors %}<p class="muted-text mt-1" style="color:#c53030;">{{ user_form.email.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="form-label" for="id_phone">Phone</label>
+                    {{ profile_form.phone }}
+                    {% if profile_form.phone.errors %}<p class="muted-text mt-1" style="color:#c53030;">{{ profile_form.phone.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="form-label" for="id_address">Address</label>
+                    {{ profile_form.address }}
+                    {% if profile_form.address.errors %}<p class="muted-text mt-1" style="color:#c53030;">{{ profile_form.address.errors.0 }}</p>{% endif %}
+                </div>
+                <div>
+                    <label class="form-label" for="id_profile_picture">Profile photo</label>
+                    {{ profile_form.profile_picture }}
+                    <p class="muted-text mt-1">Optional. JPG, PNG, or WebP.</p>
+                    {% if profile_form.profile_picture.errors %}<p class="muted-text mt-1" style="color:#c53030;">{{ profile_form.profile_picture.errors.0 }}</p>{% endif %}
+                </div>
+                {% if user_form.non_field_errors %}
+                <div class="rounded-xl px-4 py-3 text-sm" style="background:#fff5f5;color:#c53030;border:1px solid #fed7d7;">{{ user_form.non_field_errors }}</div>
+                {% endif %}
+                <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Save changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

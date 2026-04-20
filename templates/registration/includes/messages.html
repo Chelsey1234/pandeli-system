@@ -1,16 +1,12 @@
 {% if messages %}
     {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show animate__animated animate__shakeX" 
-             role="alert">
-            <div class="d-flex align-items-center">
-                <div class="alert-icon me-3">
-                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% else %}info-circle{% endif %} fa-lg"></i>
-                </div>
-                <div class="alert-content flex-grow-1">
-                    {{ message }}
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        </div>
+    <div class="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium animate__animated animate__shakeX
+        {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200
+        {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+        {% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}"
+        role="alert">
+        <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% else %}info-circle{% endif %} flex-shrink-0"></i>
+        <span class="flex-1">{{ message }}</span>
+    </div>
     {% endfor %}
 {% endif %}

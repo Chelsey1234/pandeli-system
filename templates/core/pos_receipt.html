@@ -4,45 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receipt - {{ order.order_number }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Courier New', monospace; background: #f3f4f6; display: flex; justify-content: center; padding: 2rem; }
+        .receipt { background: #fff; max-width: 320px; width: 100%; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .receipt-header { text-align: center; margin-bottom: 1rem; border-bottom: 1px dashed #ccc; padding-bottom: 1rem; }
+        .receipt-header h3 { font-size: 1.2rem; color: #C98A6B; margin-bottom: 0.25rem; }
+        .receipt-header p { font-size: 0.75rem; color: #666; line-height: 1.5; }
+        .receipt-info { font-size: 0.8rem; margin-bottom: 1rem; }
+        .receipt-info p { margin-bottom: 0.2rem; }
+        table { width: 100%; font-size: 0.78rem; border-collapse: collapse; }
+        thead th { border-bottom: 1px solid #ccc; padding: 4px 2px; text-align: left; }
+        tbody td { padding: 4px 2px; }
+        .text-right { text-align: right; }
+        .receipt-total { border-top: 1px dashed #ccc; margin-top: 0.75rem; padding-top: 0.75rem; }
+        .receipt-total td { padding: 3px 2px; font-size: 0.8rem; }
+        .receipt-total .total-row td { font-weight: bold; font-size: 0.9rem; }
+        .receipt-footer { text-align: center; margin-top: 1rem; font-size: 0.7rem; color: #888; border-top: 1px dashed #ccc; padding-top: 0.75rem; }
+        .no-print { text-align: center; margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center; }
+        .btn { padding: 0.5rem 1.25rem; border: none; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-weight: 600; transition: opacity 0.15s; }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary { background: #C98A6B; color: #fff; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
         @media print {
-            .no-print {
-                display: none;
-            }
-            body {
-                padding: 20px;
-                font-size: 12px;
-            }
-        }
-        .receipt {
-            max-width: 300px;
-            margin: 0 auto;
-            font-family: 'Courier New', monospace;
-        }
-        .receipt-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .receipt-header h3 {
-            margin-bottom: 5px;
-        }
-        .receipt-items {
-            width: 100%;
-            margin: 10px 0;
-        }
-        .receipt-items th, .receipt-items td {
-            padding: 5px 0;
-        }
-        .receipt-total {
-            border-top: 1px dashed #000;
-            padding-top: 10px;
-            margin-top: 10px;
-        }
-        .receipt-footer {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 10px;
+            body { background: none; padding: 0; }
+            .receipt { box-shadow: none; border-radius: 0; }
+            .no-print { display: none; }
         }
     </style>
 </head>
@@ -61,13 +48,13 @@
             <p><strong>Payment:</strong> {{ order.payment_method|default:"cash"|title }}</p>
         </div>
 
-        <table class="receipt-items">
+        <table>
             <thead>
                 <tr>
                     <th>Item</th>
                     <th>Qty</th>
-                    <th class="text-end">Price</th>
-                    <th class="text-end">Total</th>
+                    <th class="text-right">Price</th>
+                    <th class="text-right">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -75,43 +62,43 @@
                 <tr>
                     <td>{{ item.product.name|truncatechars:15 }}</td>
                     <td>{{ item.quantity }}</td>
-                    <td class="text-end">&#8369;{{ item.price|floatformat:2 }}</td>
-                    <td class="text-end">&#8369;{{ item.subtotal|floatformat:2 }}</td>
+                    <td class="text-right">&#8369;{{ item.price|floatformat:2 }}</td>
+                    <td class="text-right">&#8369;{{ item.subtotal|floatformat:2 }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
         <div class="receipt-total">
-            <table class="w-100">
+            <table>
                 <tr>
                     <td>Subtotal:</td>
-                    <td class="text-end">&#8369;{{ order.subtotal|floatformat:2 }}</td>
+                    <td class="text-right">&#8369;{{ order.subtotal|floatformat:2 }}</td>
                 </tr>
                 {% if order.tax and order.tax != 0 %}
                 <tr>
                     <td>Tax:</td>
-                    <td class="text-end">&#8369;{{ order.tax|floatformat:2 }}</td>
+                    <td class="text-right">&#8369;{{ order.tax|floatformat:2 }}</td>
                 </tr>
                 {% endif %}
                 {% if order.discount and order.discount != 0 %}
                 <tr>
                     <td>Discount:</td>
-                    <td class="text-end">- &#8369;{{ order.discount|floatformat:2 }}</td>
+                    <td class="text-right">-&#8369;{{ order.discount|floatformat:2 }}</td>
                 </tr>
                 {% endif %}
-                <tr>
-                    <td><strong>TOTAL:</strong></td>
-                    <td class="text-end"><strong>&#8369;{{ order.total|floatformat:2 }}</strong></td>
+                <tr class="total-row">
+                    <td>TOTAL:</td>
+                    <td class="text-right" style="color:#C98A6B;">&#8369;{{ order.total|floatformat:2 }}</td>
                 </tr>
                 {% if order.payment_method == 'cash' %}
                 <tr>
                     <td>Cash Received:</td>
-                    <td class="text-end">&#8369;{{ order.amount_received|floatformat:2 }}</td>
+                    <td class="text-right">&#8369;{{ order.amount_received|floatformat:2 }}</td>
                 </tr>
                 <tr>
                     <td>Change:</td>
-                    <td class="text-end">&#8369;{{ order.change_amount|floatformat:2 }}</td>
+                    <td class="text-right">&#8369;{{ order.change_amount|floatformat:2 }}</td>
                 </tr>
                 {% endif %}
             </table>
@@ -120,23 +107,12 @@
         <div class="receipt-footer">
             <p>Thank you for your purchase!</p>
             <p>This serves as your official receipt.</p>
-            {% if order.customer and order.customer.loyalty_points %}
-            <p>Loyalty Points Earned: {{ order.total|floatformat:0|add:"0" }}</p>
-            {% endif %}
         </div>
 
-        <div class="text-center no-print mt-4">
+        <div class="no-print">
             <button class="btn btn-primary" onclick="window.print()">Print Receipt</button>
             <button class="btn btn-secondary" onclick="window.close()">Close</button>
         </div>
     </div>
-
-    <script>
-        // Auto-print when page loads
-        window.onload = function() {
-            // Uncomment the next line to auto-print
-            // window.print();
-        }
-    </script>
 </body>
 </html>

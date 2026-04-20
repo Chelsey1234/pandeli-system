@@ -1,5 +1,6 @@
 import logging
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +18,7 @@ def safe_context_processor(func):
 @safe_context_processor
 def notifications(request):
     """
-    Context processor to add notification data to all templates.
-    Uses only() to minimize data transfer.
+    Context processor to add notification data to all templates
     """
     context = {
         'unread_notifications_count': 0,
@@ -28,6 +28,8 @@ def notifications(request):
     if hasattr(request, 'user') and request.user.is_authenticated:
         try:
             from .models import Notification
+            
+            # Check if the Notification table exists
             from django.db import connection
             if 'core_notification' in connection.introspection.table_names():
                 unread_count = Notification.objects.filter(
@@ -37,9 +39,6 @@ def notifications(request):
                 
                 recent_notifications = Notification.objects.filter(
                     recipient_user=request.user
-                ).only(
-                    'id', 'title', 'message', 'notification_type',
-                    'is_read', 'created_at', 'link', 'action_text'
                 ).order_by('-created_at')[:5]
                 
                 context = {
@@ -55,27 +54,30 @@ def notifications(request):
 @safe_context_processor
 def products_context(request):
     """
-    Context processor — only loads products/customers for pages that need the modal.
-    Uses minimal fields to reduce query cost.
+    Context processor to add products to all templates for the New Order modal
     """
     context = {
         'products': [],
-        'customers': [],
+        'customers': [],  # Also add customers for the order modal
     }
-
+    
     if hasattr(request, 'user') and request.user.is_authenticated:
         try:
             from .models import Product, Customer
-            # Only load what the New Order modal needs
+            
+            # For Create New Order modal: show all products so admin can order any product
+            products = Product.objects.all().order_by('name')[:100]
+            
+            # Get customers for the order modal
+            customers = Customer.objects.all().order_by('name')[:50]
+            
             context = {
-                'products': Product.objects.filter(
-                    is_archived=False, is_available=True
-                ).only('id', 'name', 'price', 'stock', 'category').order_by('name')[:50],
-                'customers': Customer.objects.only('id', 'name').order_by('name')[:30],
+                'products': products,
+                'customers': customers,
             }
         except Exception as e:
             logger.warning(f"Could not load products/customers: {e}")
-
+    
     return context
 
 
@@ -92,18 +94,20 @@ def user_role(request):
         'is_production_admin': False,
         'user_role': 'guest',
         'user_display_name': 'Guest',
+        'profile_picture_url': None,
     }
     
     if hasattr(request, 'user') and request.user.is_authenticated:
         try:
-            # Basic user info
             context['user_display_name'] = request.user.get_full_name() or request.user.username
-            
-            # Check for profile
-            if hasattr(request.user, 'profile'):
+
+            try:
                 profile = request.user.profile
+            except ObjectDoesNotExist:
+                profile = None
+
+            if profile is not None:
                 role = profile.role if profile.role else 'staff'
-                
                 context.update({
                     'is_admin': role == 'admin',
                     'is_manager': role == 'manager',
@@ -112,8 +116,9 @@ def user_role(request):
                     'is_staff': role in ['staff', 'cashier', 'production_admin'],
                     'user_role': role,
                 })
+                if profile.profile_picture:
+                    context['profile_picture_url'] = profile.profile_picture.url
             else:
-                # Fallback for users without profile
                 context.update({
                     'is_admin': request.user.is_superuser,
                     'is_staff': request.user.is_staff,

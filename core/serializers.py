@@ -30,9 +30,6 @@ class ProductSerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         if obj.image and hasattr(obj.image, 'url'):
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return None
 
@@ -83,7 +80,8 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'order_number', 'customer', 'customer_name', 'order_type',
-            'status', 'payment_status', 'subtotal', 'tax', 'discount', 'total',
+            'status', 'payment_status', 'payment_method', 'amount_received',
+            'change_amount', 'subtotal', 'tax', 'discount', 'total',
             'notes', 'created_by', 'created_by_name', 'created_at', 'updated_at',
             'items'
         ]

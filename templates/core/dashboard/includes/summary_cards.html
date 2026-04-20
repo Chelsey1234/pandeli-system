@@ -1,90 +1,67 @@
-<!-- Summary Cards Row -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-white bg-gradient-primary">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Today's Sales</h6>
-                        <h2 class="mb-0">&#8369;{{ daily_sales|floatformat:2 }}</h2>
-                        <small class="opacity-75">vs yesterday</small>
-                    </div>
-                    <div class="text-end">
-                        <i class="fas fa-coins fa-3x opacity-50"></i>
-                    </div>
-                </div>
-                <div class="mt-3 small">
-                    <span class="text-white-50">
-                        <i class="fas fa-arrow-up me-1"></i>+12.5%
-                    </span>
-                </div>
+<!-- 60-30-10: cards are white on #F5EDE8 canvas, brand color for icons, accent for key numbers -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    <!-- Today's Sales -->
+    <div class="rounded-2xl p-5 bg-white shadow-sm" style="border:1px solid #ecddd5;">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide" style="color:#a86b4e;">Today's Sales</p>
+                <p class="text-2xl font-bold mt-1" style="color:#3d2010;">&#8369;{{ daily_sales|floatformat:2 }}</p>
+                <p class="text-xs mt-1" style="color:#b89080;">
+                    {% if sales_change_pct >= 0 %}
+                        <i class="fas fa-arrow-up mr-1"></i>+{{ sales_change_pct }}%
+                    {% else %}
+                        <i class="fas fa-arrow-down mr-1"></i>{{ sales_change_pct }}%
+                    {% endif %}
+                    vs yesterday
+                </p>
+            </div>
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#fdf5f0;">
+                <i class="fas fa-coins" style="color:#C98A6B;"></i>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-3">
-        <div class="card text-white bg-gradient-success">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Monthly Sales</h6>
-                        <h2 class="mb-0">&#8369;{{ monthly_sales|floatformat:2 }}</h2>
-                        <small class="opacity-75">This month</small>
-                    </div>
-                    <div class="text-end">
-                        <i class="fas fa-chart-line fa-3x opacity-50"></i>
-                    </div>
-                </div>
-                <div class="mt-3 small">
-                    <span class="text-white-50">
-                        <i class="fas fa-calendar me-1"></i>This month
-                    </span>
-                </div>
+
+    <!-- Monthly Sales -->
+    <div class="rounded-2xl p-5 bg-white shadow-sm" style="border:1px solid #ecddd5;">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide" style="color:#a86b4e;">Monthly Sales</p>
+                <p class="text-2xl font-bold mt-1" style="color:#3d2010;">&#8369;{{ monthly_sales|floatformat:2 }}</p>
+                <p class="text-xs mt-1" style="color:#b89080;"><i class="fas fa-calendar mr-1"></i>This month</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#fdf5f0;">
+                <i class="fas fa-chart-line" style="color:#C98A6B;"></i>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-3">
-        <div class="card text-white bg-gradient-info">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Total Orders</h6>
-                        <h2 class="mb-0">{{ total_orders }}</h2>
-                        <small class="opacity-75">Today</small>
-                    </div>
-                    <div class="text-end">
-                        <i class="fas fa-shopping-cart fa-3x opacity-50"></i>
-                    </div>
-                </div>
-                <div class="mt-3 small">
-                    <span class="text-white-50">
-                        <i class="fas fa-check-circle me-1"></i>{{ pending_orders }} pending
-                    </span>
-                </div>
+
+    <!-- Total Orders -->
+    <div class="rounded-2xl p-5 bg-white shadow-sm" style="border:1px solid #ecddd5;">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide" style="color:#a86b4e;">Total Orders</p>
+                <p class="text-2xl font-bold mt-1" style="color:#3d2010;">{{ total_orders }}</p>
+                <p class="text-xs mt-1" style="color:#b89080;"><i class="fas fa-check-circle mr-1"></i>{{ pending_orders }} pending</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#fdf5f0;">
+                <i class="fas fa-shopping-cart" style="color:#C98A6B;"></i>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-3">
-        <div class="card text-white bg-gradient-warning">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Low Stock Alerts</h6>
-                        <h2 class="mb-0">{{ low_stock_products|length }}</h2>
-                        <small class="opacity-75">Need restock</small>
-                    </div>
-                    <div class="text-end">
-                        <i class="fas fa-exclamation-triangle fa-3x opacity-50"></i>
-                    </div>
-                </div>
-                <div class="mt-3 small">
-                    <span class="text-white-50">
-                        <i class="fas fa-clock me-1"></i>{{ pending_orders }} orders pending
-                    </span>
-                </div>
+
+    <!-- Low Stock Alerts -->
+    <div class="rounded-2xl p-5 bg-white shadow-sm" style="border:1px solid #ecddd5;">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-wide" style="color:#a86b4e;">Low Stock</p>
+                <p class="text-2xl font-bold mt-1" style="color:#3d2010;">{{ low_stock_products|length }}</p>
+                <p class="text-xs mt-1" style="color:#b89080;"><i class="fas fa-clock mr-1"></i>Need restock</p>
+            </div>
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#fff5f0;">
+                <i class="fas fa-exclamation-triangle" style="color:#e53e3e;"></i>
             </div>
         </div>
     </div>
+
 </div>

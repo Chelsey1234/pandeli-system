@@ -4,109 +4,53 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid fade-in">
-    <!-- Summary Cards Row -->
+<div class="space-y-6">
+    <!-- Summary Cards -->
     {% include 'core/dashboard/includes/summary_cards.html' %}
 
-    <!-- First Charts Row -->
-    <div class="row mb-4">
-        <!-- Sales Line Chart -->
-        <div class="col-md-8">
+    <!-- Charts Row 1 -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2">
             {% include 'core/dashboard/includes/sales_line_chart.html' %}
         </div>
-        
-        <!-- Best Sellers Chart -->
-        <div class="col-md-4">
+        <div>
             {% include 'core/dashboard/includes/best_sellers_chart.html' %}
         </div>
     </div>
 
-    <!-- Second Charts Row -->
-    <div class="row mb-4">
-        <!-- Sales by Category Chart -->
-        <div class="col-md-6">
-            {% include 'core/dashboard/includes/category_chart.html' %}
-        </div>
-        
-        <!-- Top Products Chart -->
-        <div class="col-md-6">
-            {% include 'core/dashboard/includes/top_products_chart.html' %}
-        </div>
+    <!-- Charts Row 2 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% include 'core/dashboard/includes/category_chart.html' %}
+        {% include 'core/dashboard/includes/top_products_chart.html' %}
     </div>
 
     <!-- Tables Row -->
-    <div class="row mb-4">
-        <!-- Low Stock Alert Table -->
-        <div class="col-md-6">
-            {% include 'core/dashboard/includes/low_stock_table.html' %}
-        </div>
-        
-        <!-- Recent Orders Table -->
-        <div class="col-md-6">
-            {% include 'core/dashboard/includes/recent_orders_table.html' %}
-        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% include 'core/dashboard/includes/low_stock_table.html' %}
+        {% include 'core/dashboard/includes/recent_orders_table.html' %}
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- CRITICAL: Pass Django data to JavaScript -->
 <script>
-    // Sales trend data - using safe filter to ensure JSON is parsed correctly
     window.salesLabels = {{ sales_labels|safe }};
-    window.salesData = {{ sales_data|safe }};
-    
-    // Best sellers data - manually construct array
+    window.salesData   = {{ sales_data|safe }};
     window.bestSellers = [
         {% for product in best_sellers %}
-        {
-            name: "{{ product.product__name|escapejs }}",
-            quantity: {{ product.total_quantity }}
-        }{% if not forloop.last %},{% endif %}
+        { name: "{{ product.product__name|escapejs }}", quantity: {{ product.total_quantity }} }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
-    
-    // Debug: Log to console immediately
-    console.log('🔍 Dashboard Data Loaded:');
-    console.log('  📊 salesLabels:', window.salesLabels);
-    console.log('  📈 salesData:', window.salesData);
-    console.log('  🏆 bestSellers:', window.bestSellers);
-    console.log('  📦 products count:', {{ products|length }});
-    console.log('  👥 customers count:', {{ customers|length }});
 </script>
-
-<!-- Chart.js library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- Chart managers -->
 <script src="{% static 'core/js/dashboard/charts.js' %}"></script>
 <script src="{% static 'core/js/dashboard/line-chart.js' %}"></script>
 <script src="{% static 'core/js/dashboard/category-chart.js' %}"></script>
 <script src="{% static 'core/js/dashboard/products-chart.js' %}"></script>
 <script src="{% static 'core/js/dashboard/best-sellers.js' %}"></script>
-
-<!-- Initialize charts -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('📋 DOM Content Loaded');
-        
-        // Check if data exists
-        if (!window.salesLabels || !window.salesData) {
-            console.warn('⚠️ Sales chart data missing!');
-        }
-        
-        if (typeof DashboardCharts !== 'undefined') {
-            console.log('✅ DashboardCharts found, initializing...');
-            DashboardCharts.init();
-        } else {
-            console.error('❌ DashboardCharts is not defined');
-            console.log('Available chart managers:', {
-                LineChartManager: typeof LineChartManager,
-                CategoryChartManager: typeof CategoryChartManager,
-                ProductsChartManager: typeof ProductsChartManager,
-                BestSellersChartManager: typeof BestSellersChartManager
-            });
-        }
+        if (typeof DashboardCharts !== 'undefined') DashboardCharts.init();
     });
 </script>
 {% endblock %}

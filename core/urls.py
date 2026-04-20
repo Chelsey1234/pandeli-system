@@ -1,4 +1,5 @@
 from django.urls import path, include
+from django.contrib.auth import views as auth_views
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from . import views
@@ -22,6 +23,23 @@ urlpatterns = [
     path('', views.login_view, name='login'),           # Root URL goes to login
     path('login/', views.login_view, name='login'),     # Explicit login URL
     path('logout/', views.logout_view, name='logout'),
+    path('profile/', views.user_profile, name='user_profile'),
+
+    # ------------------------------------------
+    # PASSWORD RESET
+    # ------------------------------------------
+    path('password-reset/', 
+         auth_views.PasswordResetView.as_view(template_name='registration/password_reset.html'),
+         name='password_reset'),
+    path('password-reset/done/', 
+         auth_views.PasswordResetDoneView.as_view(template_name='registration/password_reset_done.html'),
+         name='password_reset_done'),
+    path('password-reset-confirm/<uidb64>/<token>/', 
+         auth_views.PasswordResetConfirmView.as_view(template_name='registration/password_reset_confirm.html'),
+         name='password_reset_confirm'),
+    path('password-reset-complete/', 
+         auth_views.PasswordResetCompleteView.as_view(template_name='registration/password_reset_complete.html'),
+         name='password_reset_complete'),
     
     # ------------------------------------------
     # CORE FEATURES
@@ -47,6 +65,7 @@ urlpatterns = [
     path('sales/analytics/', views.production_cost_analytics, name='production_cost_analytics'),
     path('forecast/', views.forecast, name='forecast'),
     path('forecast/run/', views.run_forecast, name='run_forecast'),
+    path('forecast/data/', views.forecast_data, name='forecast_data'),
     
     # ------------------------------------------
     # IMPORT / EXPORT
@@ -92,22 +111,6 @@ urlpatterns = [
     path('notifications/create-bulk/', 
          views.create_bulk_notification, 
          name='create_bulk_notification'),
-    
-    # ------------------------------------------
-    # APP FEATURES (app home screen carousel)
-    # ------------------------------------------
-    path('products/app-features/', views.app_feature_list, name='app_feature_list'),
-    path('products/app-features/add/', views.app_feature_add, name='app_feature_add'),
-    path('products/app-features/<int:pk>/toggle/', views.app_feature_toggle, name='app_feature_toggle'),
-    path('products/app-features/<int:pk>/delete/', views.app_feature_delete, name='app_feature_delete'),
-    path('api/app-features/', views.app_features_api, name='app_features_api'),
-
-    # ------------------------------------------
-    # PUBLIC PAGES (no login required)
-    # ------------------------------------------
-    path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
-    path('privacy_policy.php', views.privacy_policy, name='privacy_policy_php'),
-    path('privacy_policy.php/', views.privacy_policy, name='privacy_policy_php_slash'),
     
     # ------------------------------------------
     # API (includes all router URLs)

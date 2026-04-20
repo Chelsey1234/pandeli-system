@@ -1,26 +1,151 @@
-<nav id="sidebar">
-    <div class="sidebar-header">
-        <h3 class="sidebar-brand">Pandeli</h3>
-        <small class="sidebar-subtitle">Sales & Inventory</small>
+{% load static %}
+<nav id="sidebar" class="fixed top-0 left-0 h-screen flex flex-col z-50"
+     style="background:#ffffff; border-right:1px solid #ecddd5; box-shadow:2px 0 12px rgba(124,74,45,0.08); transition:width 0.3s cubic-bezier(0.4,0,0.2,1); overflow:hidden;">
+
+    <!-- Logo -->
+    <div class="flex-shrink-0 flex flex-col items-center justify-center py-5 px-4"
+         style="border-bottom:1px solid #f0e0d6; min-height:100px;">
+        <a href="{% url 'dashboard' %}" class="flex-shrink-0 flex flex-col items-center">
+            <img src="/media/products/pandelicover.jpg" alt="Pandeli"
+                 class="object-cover rounded-2xl hover:scale-105 transition-transform duration-200"
+                 style="width:64px;height:64px;border:2px solid #ecddd5;box-shadow:0 2px 8px rgba(124,74,45,0.12);">
+        </a>
+        <span class="sidebar-label mt-2 font-bold text-sm tracking-wide"
+              style="white-space:nowrap;color:#7C4A2D;"></span>
     </div>
-    <div class="sidebar-nav">
-        <ul class="components list-unstyled">
-            <li><a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="{% url 'order_list' %}" class="{% if request.resolver_match.url_name == 'order_list' or request.resolver_match.url_name == 'order_detail' %}active{% endif %}"><i class="fas fa-shopping-cart"></i> Orders</a></li>
-            <li><a href="{% url 'pos' %}" class="{% if request.resolver_match.url_name == 'pos' or request.resolver_match.url_name == 'pos_receipt' %}active{% endif %}"><i class="fas fa-cash-register"></i> POS</a></li>
-            <li><a href="{% url 'product_list' %}" class="{% if request.resolver_match.url_name == 'product_list' or request.resolver_match.url_name == 'app_feature_list' %}active{% endif %}"><i class="fas fa-box"></i> Products</a></li>
-            <li><a href="{% url 'inventory_status' %}" class="{% if request.resolver_match.url_name == 'inventory_status' %}active{% endif %}"><i class="fas fa-warehouse"></i> Inventory</a></li>
-            <li><a href="{% url 'supplier_list' %}" class="{% if request.resolver_match.url_name == 'supplier_list' %}active{% endif %}"><i class="fas fa-truck"></i> Suppliers</a></li>
-            <li><a href="{% url 'sales_report' %}" class="{% if request.resolver_match.url_name == 'sales_report' %}active{% endif %}"><i class="fas fa-chart-bar"></i> Sales Report</a></li>
-            <li><a href="{% url 'production_cost_analytics' %}" class="{% if request.resolver_match.url_name == 'production_cost_analytics' %}active{% endif %}"><i class="fas fa-chart-line"></i> Cost Analytics</a></li>
-            <li><a href="{% url 'forecast' %}" class="{% if request.resolver_match.url_name == 'forecast' %}active{% endif %}"><i class="fas fa-chart-area"></i> Forecast</a></li>
-            <li><a href="{% url 'import_data' %}" class="{% if request.resolver_match.url_name == 'import_data' or request.resolver_match.url_name == 'import_history' %}active{% endif %}"><i class="fas fa-file-import"></i> Import</a></li>
-            <li><a href="{% url 'messages' %}"><i class="fas fa-bell"></i> Messages</a></li>
+
+    <!-- Nav links -->
+    <div class="flex-1 overflow-y-auto overflow-x-hidden py-3"
+         style="scrollbar-width:thin;scrollbar-color:#ecddd5 transparent;">
+        <ul class="space-y-0.5">
+
+{% if is_production_admin %}
+
+{% with n=request.resolver_match.url_name %}
+<li><a href="{% url 'order_list' %}" title="Orders"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'order_list' or n == 'order_detail' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-shopping-cart flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Orders</span>
+</a></li>
+<li><a href="{% url 'inventory_status' %}" title="Inventory Kitchen"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'inventory_status' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-warehouse flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Inventory Kitchen</span>
+</a></li>
+<li><a href="{% url 'product_list' %}" title="Menu / Products"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'product_list' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-box flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Menu / Products</span>
+</a></li>
+<li><a href="{% url 'user_profile' %}" title="Profile"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'user_profile' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-user-circle flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Profile</span>
+</a></li>
+{% endwith %}
+
+{% else %}
+
+{% with n=request.resolver_match.url_name %}
+<li><a href="{% url 'dashboard' %}" title="Dashboard"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'dashboard' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-tachometer-alt flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Dashboard</span>
+</a></li>
+<li><a href="{% url 'order_list' %}" title="Orders"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'order_list' or n == 'order_detail' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-shopping-cart flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Orders</span>
+</a></li>
+<li><a href="{% url 'pos' %}" title="POS"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'pos' or n == 'pos_receipt' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-cash-register flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">POS</span>
+</a></li>
+<li><a href="{% url 'product_list' %}" title="Products"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'product_list' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-box flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Products</span>
+</a></li>
+<li><a href="{% url 'inventory_status' %}" title="Inventory"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'inventory_status' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-warehouse flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Inventory</span>
+</a></li>
+<li><a href="{% url 'supplier_list' %}" title="Suppliers"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'supplier_list' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-truck flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Suppliers</span>
+</a></li>
+
+<li class="sidebar-section-label px-5 pt-4 pb-1">
+    <span class="text-xs font-semibold uppercase tracking-widest sidebar-label" style="color:#C98A6B;">Analytics</span>
+</li>
+
+<li><a href="{% url 'sales_report' %}" title="Sales Report"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'sales_report' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-chart-bar flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Sales Report</span>
+</a></li>
+<li><a href="{% url 'production_cost_analytics' %}" title="Cost Analytics"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'production_cost_analytics' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-chart-line flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Cost Analytics</span>
+</a></li>
+<li><a href="{% url 'forecast' %}" title="Forecast"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'forecast' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-chart-area flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Forecast</span>
+</a></li>
+
+<li class="sidebar-section-label px-5 pt-4 pb-1">
+    <span class="text-xs font-semibold uppercase tracking-widest sidebar-label" style="color:#C98A6B;">System</span>
+</li>
+
+<li><a href="{% url 'import_data' %}" title="Import"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'import_data' or n == 'import_history' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-file-import flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Import</span>
+</a></li>
+<li><a href="{% url 'messages' %}" title="Messages"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="border-left:3px solid transparent;color:#6b7280;padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-bell flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Messages</span>
+</a></li>
+<li><a href="{% url 'user_profile' %}" title="Profile"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'user_profile' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-user-circle flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Profile</span>
+</a></li>
+{% endwith %}
+
+{% endif %}
         </ul>
     </div>
-    <div class="sidebar-footer">
-        <ul class="components list-unstyled">
-            <li><a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
+
+    <!-- Logout -->
+    <div class="flex-shrink-0 py-2" style="border-top:1px solid #f0e0d6;">
+        <a href="{% url 'logout' %}" title="Logout"
+           class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+           style="border-left:3px solid transparent;color:#e53e3e;padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+            <i class="fas fa-sign-out-alt flex-shrink-0" style="width:20px;text-align:center;"></i>
+            <span class="sidebar-label ml-3" style="white-space:nowrap;">Logout</span>
+        </a>
     </div>
 </nav>

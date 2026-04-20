@@ -1,6 +1,5 @@
 // ========== UTILITY FUNCTIONS ==========
 
-// Get CSRF token from cookies
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -16,66 +15,55 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Show toast notification
-function showToast(message, type = 'success') {
-    // Check if toast container exists, if not create it
-    let toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-        document.body.appendChild(toastContainer);
-    }
-    
-    // Create toast element
-    const toastId = 'toast-' + Date.now();
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type} border-0`;
-    toast.id = toastId;
-    toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-    
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    `;
-    
-    toastContainer.appendChild(toast);
-    
-    // Initialize and show toast
-    const bsToast = new bootstrap.Toast(toast);
-    bsToast.show();
-    
-    // Remove toast after it's hidden
-    toast.addEventListener('hidden.bs.toast', function() {
-        toast.remove();
-    });
+function formatCurrency(amount) {
+    return '\u20B1' + parseFloat(amount).toFixed(2);
 }
 
-// Format currency
-function formatCurrency(amount) {
-    return '$' + parseFloat(amount).toFixed(2);
+// ========== TOAST ==========
+function showToast(message, type = 'success') {
+    let container = document.getElementById('tw-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'tw-toast-container';
+        container.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;';
+        document.body.appendChild(container);
+    }
+    const colors = { success:'#7C4A2D', danger:'#c0392b', error:'#c0392b', warning:'#b7791f', info:'#2b6cb0' };
+    const bg = colors[type] || colors.success;
+    const toast = document.createElement('div');
+    toast.style.cssText = 'background:' + bg + ';color:#fff;padding:0.75rem 1rem;border-radius:0.75rem;' +
+        'font-size:0.875rem;display:flex;align-items:center;gap:0.75rem;min-width:260px;max-width:360px;' +
+        'box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:slideIn 0.2s ease;';
+    toast.innerHTML = '<span style="flex:1">' + message + '</span>' +
+        '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:1rem;">\u2715</button>';
+    container.appendChild(toast);
+    setTimeout(function() { if (toast.parentNode) toast.remove(); }, 4000);
 }
 
 // ========== SIDEBAR TOGGLE ==========
 document.addEventListener('DOMContentLoaded', function() {
-    const sidebarCollapse = document.getElementById('sidebarCollapse');
-    if (sidebarCollapse) {
-        sidebarCollapse.addEventListener('click', function() {
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar) {
-                sidebar.classList.toggle('active');
-                console.log('Sidebar toggled');
-            } else {
-                console.warn('Sidebar element not found when clicked');
-            }
+    var sidebar = document.getElementById('sidebar');
+    var btn     = document.getElementById('sidebarCollapse');
+    var icon    = document.getElementById('sidebarToggleIcon');
+
+    function applyState(collapsed) {
+        if (!sidebar) return;
+        if (collapsed) {
+            sidebar.classList.add('collapsed');
+        } else {
+            sidebar.classList.remove('collapsed');
+        }
+    }
+
+    // Default: expanded (ignore any stale localStorage)
+    localStorage.removeItem('sidebarCollapsed');
+    applyState(false);
+
+    if (btn && sidebar) {
+        btn.addEventListener('click', function() {
+            var isNowCollapsed = !sidebar.classList.contains('collapsed');
+            applyState(isNowCollapsed);
         });
-    } else {
-        console.warn('Sidebar collapse button not found');
     }
 });
 
@@ -84,65 +72,43 @@ const NotificationManager = {
     markAllAsRead: function() {
         fetch('/api/notifications/mark-all-read/', {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            }
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            }
-        })
-        .catch(error => console.error('Error:', error));
+        .then(r => r.json())
+        .then(data => { if (data.success) location.reload(); })
+        .catch(e => console.error(e));
     },
-    
+
     markAsRead: function(notificationId) {
-        fetch(`/api/notifications/${notificationId}/read/`, {
+        fetch('/api/notifications/' + notificationId + '/read/', {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            }
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
-                // Update UI
                 const badge = document.querySelector('.notification-badge');
                 if (badge) {
                     const count = parseInt(badge.textContent) - 1;
-                    if (count > 0) {
-                        badge.textContent = count;
-                    } else {
-                        badge.style.display = 'none';
-                    }
+                    if (count > 0) badge.textContent = count;
+                    else badge.style.display = 'none';
                 }
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(e => console.error(e));
     },
-    
+
     getCount: function() {
         fetch('/api/notifications/count/')
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 const badge = document.querySelector('.notification-badge');
-                if (badge) {
-                    if (data.count > 0) {
-                        badge.textContent = data.count;
-                        badge.style.display = 'inline';
-                    } else {
-                        badge.style.display = 'none';
-                    }
-                }
+                if (!badge) return;
+                if (data.count > 0) { badge.textContent = data.count; badge.style.display = 'inline'; }
+                else badge.style.display = 'none';
             })
-            .catch(error => console.error('Error:', error));
+            .catch(e => console.error(e));
     }
 };
 
-// Auto-refresh notification count every 30 seconds
-setInterval(() => {
-    NotificationManager.getCount();
-}, 30000);
+setInterval(function() { NotificationManager.getCount(); }, 30000);

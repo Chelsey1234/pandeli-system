@@ -24,6 +24,25 @@ class LoginRequiredMiddleware:
             self._set_no_cache_headers(response)
             return response
 
+        # Restrict production team accounts to a limited module set.
+        if self._is_production_team(request):
+            # Allow API requests used by UI widgets.
+            if not request.path.startswith('/api/'):
+                allowed_path_prefixes = (
+                    '/orders/',
+                    '/inventory/',
+                    '/products/',
+                    '/messages/',
+                    '/profile/',
+                    '/logout/',
+                    '/static/',
+                    '/media/',
+                )
+                if not request.path.startswith(allowed_path_prefixes):
+                    response = redirect('order_list')
+                    self._set_no_cache_headers(response)
+                    return response
+
         response = self.get_response(request)
         # Prevent protected content from being cached,
         # so browser back after logout won't reveal prior pages.
@@ -37,10 +56,6 @@ class LoginRequiredMiddleware:
             '/admin/login/',
             '/static/',
             '/media/',
-            '/privacy-policy/',
-            '/privacy_policy.php',
-            '/api/banners/',
-            '/api/app-features/',
         ]
         
         # Add any additional public paths
@@ -60,3 +75,11 @@ class LoginRequiredMiddleware:
         response['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
         response['Pragma'] = 'no-cache'
         response['Expires'] = '0'
+
+    def _is_production_team(self, request):
+        return (
+            hasattr(request, 'user')
+            and request.user.is_authenticated
+            and hasattr(request.user, 'profile')
+            and request.user.profile.role == 'production_admin'
+        )

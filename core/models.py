@@ -58,8 +58,6 @@ class Product(models.Model):
     is_available = models.BooleanField(default=True)
     is_archived = models.BooleanField(default=False)
     archived_at = models.DateTimeField(null=True, blank=True)
-    is_new_arrival = models.BooleanField(default=False)
-    is_best_seller = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -175,19 +173,7 @@ class Order(models.Model):
     
     class Meta:
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['-created_at']),
-            models.Index(fields=['status']),
-            models.Index(fields=['payment_status']),
-        ]
     
-    def get_customer_safe(self):
-        """Safely get customer — handles UUID customer_id from mobile app"""
-        try:
-            return self.customer
-        except Exception:
-            return None
-
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = f"ORD-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
@@ -426,19 +412,3 @@ class ImportHistory(models.Model):
     
     def __str__(self):
         return f"{self.import_type} - {self.created_at}"
-
-
-class AppFeature(models.Model):
-    title = models.CharField(max_length=200, blank=True, help_text="Optional title shown on feature")
-    subtitle = models.CharField(max_length=300, blank=True, help_text="Optional subtitle/tagline")
-    image = models.ImageField(upload_to='app_features/', help_text="Promo feature image")
-    is_active = models.BooleanField(default=True)
-    order = models.PositiveIntegerField(default=0, help_text="Display order (lower = first)")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['order', '-created_at']
-
-    def __str__(self):
-        return self.title or f"App Feature #{self.pk}"

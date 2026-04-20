@@ -1,90 +1,48 @@
 // ========== DASHBOARD CHARTS MANAGER ==========
+// Palette: RdYlBu diverging (colorStart 0.1 → colorEnd 1.0)
+
+window.RDYLBU = [
+    '#d73027', // red
+    '#f46d43', // orange-red
+    '#fdae61', // orange
+    '#fee090', // yellow-orange
+    '#ffffbf', // pale yellow
+    '#e0f3f8', // pale blue
+    '#abd9e9', // light blue
+    '#74add1', // medium blue
+    '#4575b4', // blue
+    '#313695'  // dark blue
+];
+
+// Pick N evenly-spaced colors from the palette
+window.rdylbuColors = function(n) {
+    var p = window.RDYLBU;
+    if (n <= 1) return [p[0]];
+    var result = [];
+    for (var i = 0; i < n; i++) {
+        var idx = Math.round(i * (p.length - 1) / (n - 1));
+        result.push(p[idx]);
+    }
+    return result;
+};
 
 const DashboardCharts = {
-    initialized: false,
-    
     init: function() {
-        console.log('Initializing dashboard charts...');
-        
-        // First destroy any existing charts
-        this.destroyAll();
-        
-        // Small delay to ensure DOM is ready
-        setTimeout(() => {
-            // Initialize each chart if its manager exists
-            if (typeof LineChartManager !== 'undefined') {
-                try {
-                    LineChartManager.init();
-                } catch (e) {
-                    console.error('Error initializing LineChartManager:', e);
-                }
-            }
-            
-            if (typeof CategoryChartManager !== 'undefined') {
-                try {
-                    CategoryChartManager.init();
-                } catch (e) {
-                    console.error('Error initializing CategoryChartManager:', e);
-                }
-            }
-            
-            if (typeof ProductsChartManager !== 'undefined') {
-                try {
-                    ProductsChartManager.init();
-                } catch (e) {
-                    console.error('Error initializing ProductsChartManager:', e);
-                }
-            }
-            
-            if (typeof BestSellersChartManager !== 'undefined') {
-                try {
-                    BestSellersChartManager.init();
-                } catch (e) {
-                    console.error('Error initializing BestSellersChartManager:', e);
-                }
-            }
-            
-            this.initialized = true;
-            console.log('Dashboard charts initialized');
-        }, 100);
-    },
-    
-    destroyAll: function() {
-        // Destroy all charts if they have destroy methods
-        if (typeof LineChartManager !== 'undefined' && LineChartManager.destroy) {
-            LineChartManager.destroy();
-        }
-        if (typeof CategoryChartManager !== 'undefined' && CategoryChartManager.destroy) {
-            CategoryChartManager.destroy();
-        }
-        if (typeof ProductsChartManager !== 'undefined' && ProductsChartManager.destroy) {
-            ProductsChartManager.destroy();
-        }
-        if (typeof BestSellersChartManager !== 'undefined' && BestSellersChartManager.destroy) {
-            BestSellersChartManager.destroy();
-        }
-    },
-    
-    showNoData: function(chartId, messageId) {
-        const chart = document.getElementById(chartId);
-        const message = document.getElementById(messageId);
-        if (chart) chart.style.display = 'none';
-        if (message) message.style.display = 'block';
-    },
-    
-    showChart: function(chartId, messageId) {
-        const chart = document.getElementById(chartId);
-        const message = document.getElementById(messageId);
-        if (chart) chart.style.display = 'block';
-        if (message) message.style.display = 'none';
+        Chart.defaults.font.family = "'Poppins', sans-serif";
+        Chart.defaults.font.size = 12;
+        Chart.defaults.color = '#a86b4e';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.padding = 16;
+        Chart.defaults.animation.duration = 800;
+        Chart.defaults.animation.easing = 'easeInOutQuart';
+
+        setTimeout(function() {
+            if (typeof LineChartManager !== 'undefined')        try { LineChartManager.init(); }        catch(e) { console.error(e); }
+            if (typeof CategoryChartManager !== 'undefined')    try { CategoryChartManager.init(); }    catch(e) { console.error(e); }
+            if (typeof ProductsChartManager !== 'undefined')    try { ProductsChartManager.init(); }    catch(e) { console.error(e); }
+            if (typeof BestSellersChartManager !== 'undefined') try { BestSellersChartManager.init(); } catch(e) { console.error(e); }
+        }, 120);
     }
 };
 
-// Initialize when DOM is ready - ONLY ONCE
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-        DashboardCharts.init();
-    });
-} else {
-    DashboardCharts.init();
-}
+document.addEventListener('DOMContentLoaded', function() { DashboardCharts.init(); });

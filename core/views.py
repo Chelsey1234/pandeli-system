@@ -14,6 +14,7 @@ from datetime import timedelta, datetime
 from django.http import JsonResponse, HttpResponse
 from functools import wraps
 from .models import *
+from .forms import UserUpdateForm, ProfileUpdateForm
 
 
 def login_required_json(view_func):
@@ -36,72 +37,6 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.chart import BarChart, Reference, LineChart
 import csv
-
-# ========== PUBLIC VIEWS (no login required) ==========
-
-def privacy_policy(request):
-    """Privacy Policy page - accessible without login"""
-    from django.http import HttpResponse
-    html = """<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pandeli Privacy Policy</title>
-    <style>
-        :root { --primary: #D39A73; --accent: #B8744C; --text: #3E2C23; --bg: #fdf8f5; --card: #ffffff; }
-        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
-        .header { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 40px 20px; text-align: center; border-bottom-left-radius: 30px; border-bottom-right-radius: 30px; }
-        .header h1 { margin: 0; }
-        .container { max-width: 900px; margin: -20px auto 40px; padding: 20px; }
-        .card { background: var(--card); padding: 20px; margin-bottom: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        h2 { color: var(--accent); }
-        .notice { background: rgba(211,154,115,0.15); border-left: 4px solid var(--primary); padding: 12px; border-radius: 8px; margin-top: 10px; }
-        .footer { text-align: center; font-size: 13px; color: #888; padding: 20px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Pandeli Privacy Policy</h1>
-        <p>Last updated: April 16, 2026</p>
-    </div>
-    <div class="container">
-        <div class="card">
-            <p>This Privacy Policy explains how we collect, use, and protect your data.</p>
-            <div class="notice">By using the Service, you agree to this Privacy Policy.</div>
-        </div>
-        <div class="card">
-            <h2>Data We Collect</h2>
-            <ul>
-                <li>Email, name, phone number</li>
-                <li>Usage data (IP, device, activity)</li>
-                <li>Location, contacts, camera (with permission)</li>
-            </ul>
-        </div>
-        <div class="card">
-            <h2>How We Use Data</h2>
-            <ul>
-                <li>Provide and maintain service</li>
-                <li>Improve user experience</li>
-                <li>Send updates and notifications</li>
-            </ul>
-        </div>
-        <div class="card">
-            <h2>Your Rights</h2>
-            <ul>
-                <li>Access your data</li>
-                <li>Edit or delete your information</li>
-            </ul>
-        </div>
-        <div class="card">
-            <h2>Contact</h2>
-            <p>Email: <strong>pandelibakehouse@gmail.com</strong></p>
-        </div>
-    </div>
-    <div class="footer">&copy; 2026 Pandeli</div>
-</body>
-</html>"""
-    return HttpResponse(html)
 
 # ========== AUTHENTICATION VIEWS ==========
 
@@ -159,72 +94,111 @@ def logout_view(request):
     response['Expires'] = '0'
     return response
 
+
+@never_cache
+@login_required
+def user_profile(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    if request.method == 'POST':
+        user_form = UserUpdateForm(request.POST, instance=request.user)
+        profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            profile_form.save()
+            messages.success(request, 'Your profile has been updated.')
+            return redirect('user_profile')
+        messages.error(request, 'Please correct the errors below.')
+    else:
+        user_form = UserUpdateForm(instance=request.user)
+        profile_form = ProfileUpdateForm(instance=profile)
+    return render(
+        request,
+        'core/profile.html',
+        {
+            'profile': profile,
+            'user_form': user_form,
+            'profile_form': profile_form,
+            'role_label': profile.get_role_display(),
+        },
+    )
+
 def is_admin_or_manager(user):
     return user.is_superuser or (hasattr(user, 'profile') and user.profile.role in ['admin', 'production_admin', 'manager'])
+
+
+def is_production_team(user):
+    return hasattr(user, 'profile') and user.profile.role == 'production_admin'
 
 # ========== DASHBOARD VIEWS ==========
 
 @login_required
 def dashboard(request):
+    # Get date ranges
     today = timezone.now().date()
     start_of_month = today.replace(day=1)
-    week_start = today - timedelta(days=6)
+    start_of_week = today - timedelta(days=today.weekday())
+    
+    # Sales data
+    daily_sales = Order.objects.filter(
+        created_at__date=today,
+    ).aggregate(total=Sum('total'))['total'] or 0
 
-    from django.db.models import Count
+    yesterday = today - timedelta(days=1)
+    yesterday_sales = Order.objects.filter(
+        created_at__date=yesterday,
+    ).aggregate(total=Sum('total'))['total'] or 0
 
-    # Single query for today's stats + monthly in one shot
-    today_stats = Order.objects.filter(created_at__date=today).aggregate(
-        daily_sales=Sum('total'),
-        total_orders=Count('id'),
-    )
-    daily_sales = today_stats['daily_sales'] or 0
-    total_orders = today_stats['total_orders'] or 0
-
+    if yesterday_sales > 0:
+        sales_change_pct = ((daily_sales - yesterday_sales) / yesterday_sales) * 100
+    elif daily_sales > 0:
+        sales_change_pct = 100
+    else:
+        sales_change_pct = 0
+    
     monthly_sales = Order.objects.filter(
         created_at__date__gte=start_of_month,
     ).aggregate(total=Sum('total'))['total'] or 0
-
+    
+    # Orders count
+    total_orders = Order.objects.filter(created_at__date=today).count()
     pending_orders = Order.objects.filter(status='pending').count()
-
-    # Low stock — minimal fields only
+    
+    # Low stock alert
     low_stock_products = Product.objects.filter(
         stock__lte=F('low_stock_threshold'),
-        is_archived=False,
-    ).only('name', 'stock', 'low_stock_threshold')[:10]
-
-    # Best sellers — single aggregation query
+        is_available=True
+    )[:10]
+    
+    # Best selling products
     best_sellers = OrderItem.objects.values(
         'product__name', 'product__id'
     ).annotate(
         total_quantity=Sum('quantity'),
         total_sales=Sum('subtotal')
     ).order_by('-total_quantity')[:5]
-
-    # Sales graph — single query
-    sales_qs = (
-        Order.objects.filter(created_at__date__gte=week_start)
-        .annotate(day=TruncDay('created_at'))
-        .values('day')
-        .annotate(total=Sum('total'))
-        .order_by('day')
-    )
-    sales_by_day = {row['day'].date(): float(row['total'] or 0) for row in sales_qs if row['day']}
-
-    last_7_days, sales_data = [], []
+    
+    # Sales graph data (last 7 days)
+    last_7_days = []
+    sales_data = []
     for i in range(6, -1, -1):
         date = today - timedelta(days=i)
         last_7_days.append(date.strftime('%Y-%m-%d'))
-        sales_data.append(sales_by_day.get(date, 0))
-
-    # Recent orders — minimal fields
-    recent_orders = Order.objects.select_related('customer').only(
-        'id', 'order_number', 'order_type', 'status', 'total', 'created_at',
-        'customer__name'
-    ).order_by('-created_at')[:5]
-
+        daily_total = Order.objects.filter(
+            created_at__date=date,
+        ).aggregate(total=Sum('total'))['total'] or 0
+        sales_data.append(float(daily_total))
+    
+    # Recent orders
+    recent_orders = Order.objects.select_related('customer').order_by('-created_at')[:5]
+    
+    # Get products and customers for the New Order modal (all products so admin can create orders)
+    products = Product.objects.all().order_by('name')[:100]
+    customers = Customer.objects.all().order_by('name')[:50]
+    
     context = {
         'daily_sales': daily_sales,
         'monthly_sales': monthly_sales,
+        'sales_change_pct': round(sales_change_pct, 1),
         'total_orders': total_orders,
         'pending_orders': pending_orders,
         'low_stock_products': low_stock_products,
@@ -232,37 +206,35 @@ def dashboard(request):
         'recent_orders': recent_orders,
         'sales_labels': json.dumps(last_7_days),
         'sales_data': json.dumps(sales_data),
+        'products': products,  # Add this
+        'customers': customers,  # Add this
     }
-
+    
     return render(request, 'core/dashboard.html', context)
 
 # ========== PRODUCT VIEWS ==========
 
 @login_required
 def product_list(request):
-    products = Product.objects.filter(is_archived=False).only(
-        'id', 'code', 'name', 'category', 'price', 'cost', 'stock',
-        'low_stock_threshold', 'image', 'is_available',
-        'is_new_arrival', 'is_best_seller'
-    )
-    archived_products = Product.objects.filter(is_archived=True).only(
-        'id', 'code', 'name', 'category', 'archived_at'
-    ).order_by('-archived_at', '-updated_at')[:50]
-    categories = Product.CATEGORY_CHOICES
-    raw_materials = RawMaterial.objects.only('id', 'name', 'unit').order_by('name')
-
+    products = Product.objects.filter(is_archived=False)
+    archived_products = Product.objects.filter(is_archived=True).order_by('-archived_at', '-updated_at')
+    categories = Category.objects.all()
+    raw_materials = RawMaterial.objects.all().order_by('name')
+    
+    # Filter by category
     category = request.GET.get('category')
     if category:
         products = products.filter(category=category)
-
+    
+    # Search
     search = request.GET.get('search')
     if search:
         products = products.filter(
-            Q(name__icontains=search) |
+            Q(name__icontains=search) | 
             Q(code__icontains=search) |
             Q(description__icontains=search)
         )
-
+    
     context = {
         'products': products,
         'archived_products': archived_products,
@@ -306,6 +278,10 @@ def inventory_status(request):
 @login_required
 def order_list(request):
     orders = Order.objects.all().select_related('customer').prefetch_related('items')
+
+    # Production team only sees incoming/in-process orders
+    if is_production_team(request.user):
+        orders = orders.filter(status__in=['pending', 'confirmed', 'preparing', 'ready'])
     
     # Filter by status
     status = request.GET.get('status')
@@ -329,24 +305,8 @@ def order_list(request):
 @login_required
 def order_detail(request, pk):
     order = get_object_or_404(Order, pk=pk)
-    # Safely get customer — customer_id may be a UUID string from mobile app
-    customer = None
-    try:
-        from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT customer_id FROM core_order WHERE id = %s", [pk])
-            row = cursor.fetchone()
-            if row and row[0]:
-                try:
-                    cid = int(row[0])
-                    customer = Customer.objects.filter(pk=cid).first()
-                except (ValueError, TypeError):
-                    customer = None
-    except Exception:
-        customer = None
     context = {
         'order': order,
-        'customer': customer,
     }
     return render(request, 'core/order_detail.html', context)
 
@@ -366,75 +326,59 @@ def confirm_order(request, pk):
                 messages.error(request, f"Insufficient stock for: {', '.join(insufficient_stock)}")
                 return redirect('order_detail', pk=pk)
             
-            try:
-                with transaction.atomic():
-                    for item in order.items.all():
-                        product = Product.objects.select_for_update().get(pk=item.product.pk)
-                        old_stock = product.stock
-                        product.stock -= item.quantity
-                        product.save()
+            # Deduct stock
+            for item in order.items.all():
+                old_stock = item.product.stock
+                item.product.stock -= item.quantity
+                item.product.save()
+                
+                # Record transaction
+                InventoryTransaction.objects.create(
+                    product=item.product,
+                    transaction_type='out',
+                    quantity=item.quantity,
+                    previous_stock=old_stock,
+                    new_stock=item.product.stock,
+                    reference=order.order_number,
+                    notes=f"Order confirmation",
+                    created_by=request.user
+                )
+                
+                # Deduct raw materials if recipe exists
+                for recipe in item.product.recipe.all():
+                    material = recipe.raw_material
+                    needed_qty = recipe.quantity * item.quantity
+                    
+                    if material.stock_quantity >= needed_qty:
+                        old_material_stock = material.stock_quantity
+                        material.stock_quantity -= needed_qty
+                        material.save()
                         
-                        InventoryTransaction.objects.create(
-                            product=product,
+                        RawMaterialTransaction.objects.create(
+                            raw_material=material,
                             transaction_type='out',
-                            quantity=item.quantity,
-                            previous_stock=old_stock,
-                            new_stock=product.stock,
+                            quantity=needed_qty,
+                            previous_stock=old_material_stock,
+                            new_stock=material.stock_quantity,
                             reference=order.order_number,
-                            notes="Order confirmation",
+                            notes=f"Used for {item.product.name}",
                             created_by=request.user
                         )
-                        
-                        for recipe in product.recipe.all():
-                            material = recipe.raw_material
-                            needed_qty = recipe.quantity * item.quantity
-                            if material.stock_quantity >= needed_qty:
-                                old_material_stock = material.stock_quantity
-                                material.stock_quantity -= needed_qty
-                                material.save()
-                                RawMaterialTransaction.objects.create(
-                                    raw_material=material,
-                                    transaction_type='out',
-                                    quantity=needed_qty,
-                                    previous_stock=old_material_stock,
-                                    new_stock=material.stock_quantity,
-                                    reference=order.order_number,
-                                    notes=f"Used for {product.name}",
-                                    created_by=request.user
-                                )
-                    
-                    # Update status using raw update to avoid loading customer FK
-                    Order.objects.filter(pk=order.pk).update(status='confirmed')
-                
-                # Notification — completely isolated, never blocks confirmation
-                try:
-                    from django.db import connection
-                    with connection.cursor() as cursor:
-                        cursor.execute(
-                            "SELECT customer_id FROM core_order WHERE id = %s", [order.pk]
-                        )
-                        row = cursor.fetchone()
-                        if row and row[0]:
-                            try:
-                                cid = int(row[0])
-                                customer = Customer.objects.filter(pk=cid).first()
-                                if customer and customer.user:
-                                    Notification.objects.create(
-                                        title=f"Order #{order.order_number} Confirmed",
-                                        message="Your order has been confirmed and is being prepared.",
-                                        notification_type='order',
-                                        recipient_type='customer',
-                                        recipient_user=customer.user
-                                    )
-                            except (ValueError, TypeError):
-                                pass  # UUID or invalid customer_id — skip notification
-                except Exception:
-                    pass
-                
-                messages.success(request, f'Order #{order.order_number} confirmed successfully.')
             
-            except Exception as e:
-                messages.error(request, f'Error confirming order: {str(e)}')
+            order.status = 'confirmed'
+            order.save()
+            
+            # Create notification
+            if order.customer and order.customer.user:
+                Notification.objects.create(
+                    title=f"Order #{order.order_number} Confirmed",
+                    message=f"Your order has been confirmed and is being prepared.",
+                    notification_type='order',
+                    recipient_type='customer',
+                    recipient_user=order.customer.user
+                )
+            
+            messages.success(request, f'Order #{order.order_number} confirmed successfully.')
     
     return redirect('order_detail', pk=pk)
 
@@ -570,8 +514,18 @@ def export_sales_report(request):
     
     if not date_from:
         date_from = (timezone.now() - timedelta(days=30)).date()
+    else:
+        try:
+            date_from = datetime.strptime(str(date_from), '%Y-%m-%d').date()
+        except ValueError:
+            date_from = (timezone.now() - timedelta(days=30)).date()
     if not date_to:
         date_to = timezone.now().date()
+    else:
+        try:
+            date_to = datetime.strptime(str(date_to), '%Y-%m-%d').date()
+        except ValueError:
+            date_to = timezone.now().date()
     
     # Create Excel workbook
     wb = Workbook()
@@ -592,20 +546,15 @@ def export_sales_report(request):
     orders = Order.objects.filter(
         created_at__date__gte=date_from,
         created_at__date__lte=date_to,
-        payment_status='paid'
     ).order_by('-created_at')
     
     # Write data
     row = 2
     for order in orders:
         items_count = order.items.count()
-        try:
-            customer_name = order.customer.name if order.customer else 'Walk-in'
-        except Exception:
-            customer_name = 'Walk-in'
         ws1.cell(row=row, column=1, value=order.created_at.strftime('%Y-%m-%d'))
         ws1.cell(row=row, column=2, value=order.order_number)
-        ws1.cell(row=row, column=3, value=customer_name)
+        ws1.cell(row=row, column=3, value=order.customer.name if order.customer else 'Walk-in')
         ws1.cell(row=row, column=4, value=items_count)
         ws1.cell(row=row, column=5, value=float(order.subtotal))
         ws1.cell(row=row, column=6, value=float(order.tax))
@@ -615,11 +564,12 @@ def export_sales_report(request):
         row += 1
     
     # Add totals row
-    totals_row = row + 1
-    ws1.cell(row=totals_row, column=5, value=f"=SUM(E2:E{row-1})")
-    ws1.cell(row=totals_row, column=8, value=f"=SUM(H2:H{row-1})")
-    ws1.cell(row=totals_row, column=5).font = Font(bold=True)
-    ws1.cell(row=totals_row, column=8).font = Font(bold=True)
+    if row > 2:
+        totals_row = row + 1
+        ws1.cell(row=totals_row, column=5, value=f"=SUM(E2:E{row-1})")
+        ws1.cell(row=totals_row, column=8, value=f"=SUM(H2:H{row-1})")
+        ws1.cell(row=totals_row, column=5).font = Font(bold=True)
+        ws1.cell(row=totals_row, column=8).font = Font(bold=True)
     
     # Create chart
     chart = LineChart()
@@ -628,12 +578,13 @@ def export_sales_report(request):
     chart.y_axis.title = 'Sales Amount'
     chart.x_axis.title = 'Date'
     
-    data = Reference(ws1, min_col=8, min_row=1, max_row=row-1, max_col=8)
-    dates = Reference(ws1, min_col=1, min_row=2, max_row=row-1)
-    chart.add_data(data, titles_from_data=True)
-    chart.set_categories(dates)
-    
-    ws1.add_chart(chart, "K2")
+    # Only add chart when there is at least one data row.
+    if row > 2:
+        data = Reference(ws1, min_col=8, min_row=1, max_row=row-1, max_col=8)
+        dates = Reference(ws1, min_col=1, min_row=2, max_row=row-1)
+        chart.add_data(data, titles_from_data=True)
+        chart.set_categories(dates)
+        ws1.add_chart(chart, "K2")
     
     # Products Sheet
     ws2 = wb.create_sheet("Top Products")
@@ -687,45 +638,36 @@ def export_sales_report(request):
 
 @login_required
 def forecast(request):
-    products = Product.objects.filter(is_archived=False).order_by('name')
+    # Include all products so forecasting still works even if stock is 0
+    products = Product.objects.all().order_by('name')
     
-    # Get upcoming forecasts
+    # Get forecasts
     forecasts = SalesForecast.objects.filter(
         forecast_date__gte=timezone.now().date()
-    ).select_related('product').order_by('forecast_date', 'product__name')[:100]
+    ).select_related('product').order_by('forecast_date')[:30]
     
-    # Summary stats
-    total_predicted = sum(f.predicted_quantity for f in forecasts)
-    avg_daily = round(total_predicted / len(forecasts), 1) if forecasts else 0
-
-    # Chart data — aggregate by date across all products
-    from django.db.models import Sum as DSum
-    forecast_by_date = (
-        SalesForecast.objects.filter(forecast_date__gte=timezone.now().date())
-        .values('forecast_date')
-        .annotate(total=DSum('predicted_quantity'))
-        .order_by('forecast_date')[:14]
-    )
-    forecast_dates = [str(r['forecast_date']) for r in forecast_by_date]
-    forecast_values = [r['total'] for r in forecast_by_date]
-
-    # Historical data — last 14 days
-    historical_data = (
-        OrderItem.objects.filter(
-            order__created_at__date__gte=timezone.now().date() - timedelta(days=14)
-        )
-        .values('order__created_at__date')
-        .annotate(total=DSum('quantity'))
-        .order_by('order__created_at__date')
-    )
-    historical_dates = [str(r['order__created_at__date']) for r in historical_data]
-    historical_values = [r['total'] for r in historical_data]
-
+    # Prepare chart data
+    forecast_dates = []
+    forecast_values = []
+    for forecast in forecasts:
+        forecast_dates.append(forecast.forecast_date.strftime('%Y-%m-%d'))
+        forecast_values.append(forecast.predicted_quantity)
+    
+    # Get historical data for comparison
+    historical_data = OrderItem.objects.filter(
+        order__created_at__date__gte=timezone.now().date() - timedelta(days=30)
+    ).values(
+        'order__created_at__date'
+    ).annotate(
+        total=Sum('quantity')
+    ).order_by('order__created_at__date')
+    
+    historical_dates = [item['order__created_at__date'].strftime('%Y-%m-%d') for item in historical_data]
+    historical_values = [item['total'] for item in historical_data]
+    
     context = {
         'products': products,
         'forecasts': forecasts,
-        'total_predicted': total_predicted,
-        'avg_daily': avg_daily,
         'forecast_dates': json.dumps(forecast_dates),
         'forecast_values': json.dumps(forecast_values),
         'historical_dates': json.dumps(historical_dates),
@@ -737,38 +679,73 @@ def forecast(request):
 def run_forecast(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
-        days = int(request.POST.get('days', 14))
-        # Cap to avoid timeout
-        if product_id:
-            days = min(days, 90)
-        else:
-            days = min(days, 30)
+        days = int(request.POST.get('days', 30))
 
         created_count = 0
-        try:
-            if product_id:
-                product = get_object_or_404(Product, id=product_id)
-                result = generate_simple_forecast(product, days)
-                created_count = len(result or [])
-            else:
-                # All products — max 5 at a time to avoid timeout
-                products = Product.objects.filter(
-                    is_archived=False, is_available=True
-                ).order_by('-updated_at')[:5]
-                for product in products:
-                    try:
-                        result = generate_simple_forecast(product, days)
-                        created_count += len(result or [])
-                    except Exception:
-                        continue
-        except Exception as e:
-            messages.error(request, f'Forecast error: {str(e)}')
-            return redirect('forecast')
+        if product_id:
+            product = get_object_or_404(Product, id=product_id)
+            result = generate_sales_forecast(product, days)
+            created_count = len(result or [])
+        else:
+            products = Product.objects.all()
+            for product in products:
+                result = generate_sales_forecast(product, days)
+                created_count += len(result or [])
 
-        messages.success(request, f'Forecast generated! ({created_count} entries for {days} days)')
+        # Return JSON for AJAX calls, redirect for normal POST
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'count': created_count})
+        if created_count > 0:
+            messages.success(request, f'Forecast generated successfully! ({created_count} forecast rows)')
+        else:
+            messages.warning(request, 'No forecast rows were generated. Add order history first, then try again.')
         return redirect('forecast')
 
     return redirect('forecast')
+
+
+@login_required
+def forecast_data(request):
+    """JSON endpoint — returns forecast + historical data for the chart."""
+    days = int(request.GET.get('days', 30))
+    product_id = request.GET.get('product_id')
+
+    qs = SalesForecast.objects.filter(
+        forecast_date__gte=timezone.now().date()
+    ).select_related('product').order_by('forecast_date')[:days]
+
+    if product_id:
+        qs = qs.filter(product_id=product_id)
+
+    forecasts_data = []
+    forecast_dates = []
+    forecast_values = []
+    for f in qs:
+        forecast_dates.append(f.forecast_date.strftime('%Y-%m-%d'))
+        forecast_values.append(f.predicted_quantity)
+        forecasts_data.append({
+            'product_name': f.product.name,
+            'forecast_date': f.forecast_date.strftime('%Y-%m-%d'),
+            'predicted_quantity': f.predicted_quantity,
+            'confidence_lower': f.confidence_lower,
+            'confidence_upper': f.confidence_upper,
+            'model_used': f.model_used,
+        })
+
+    hist_qs = OrderItem.objects.filter(
+        order__created_at__date__gte=timezone.now().date() - timedelta(days=30)
+    ).values('order__created_at__date').annotate(total=Sum('quantity')).order_by('order__created_at__date')
+
+    historical_dates  = [i['order__created_at__date'].strftime('%Y-%m-%d') for i in hist_qs]
+    historical_values = [i['total'] for i in hist_qs]
+
+    return JsonResponse({
+        'forecasts': forecasts_data,
+        'forecast_dates': forecast_dates,
+        'forecast_values': forecast_values,
+        'historical_dates': historical_dates,
+        'historical_values': historical_values,
+    })
 
 # ========== IMPORT/EXPORT VIEWS ==========
 
@@ -1046,13 +1023,9 @@ def export_data(request):
         headers = ['Order Number', 'Customer', 'Date', 'Items', 'Subtotal', 'Tax', 'Discount', 'Total', 'Status']
         data = []
         for order in Order.objects.all().select_related('customer'):
-            try:
-                customer_name = order.customer.name if order.customer else 'Walk-in'
-            except Exception:
-                customer_name = 'Walk-in'
             data.append((
                 order.order_number,
-                customer_name,
+                order.customer.name if order.customer else 'Walk-in',
                 order.created_at.strftime('%Y-%m-%d %H:%M'),
                 order.items.count(),
                 order.subtotal,
@@ -1105,71 +1078,6 @@ def supplier_list(request):
         'suppliers': suppliers,
     }
     return render(request, 'core/supplier_list.html', context)
-
-# ========== APP FEATURES VIEWS ==========
-
-@login_required
-def app_feature_list(request):
-    features = AppFeature.objects.all()
-    return render(request, 'core/app_feature_list.html', {'features': features})
-
-@login_required
-@require_POST
-def app_feature_add(request):
-    title = request.POST.get('title', '')
-    subtitle = request.POST.get('subtitle', '')
-    order = int(request.POST.get('order', 0))
-    image = request.FILES.get('image')
-    if not image:
-        messages.error(request, 'Image is required.')
-        return redirect('app_feature_list')
-    try:
-        AppFeature.objects.create(title=title, subtitle=subtitle, image=image, order=order)
-        messages.success(request, 'App feature added successfully.')
-    except Exception as e:
-        messages.error(request, f'Error uploading image: {str(e)}')
-    return redirect('app_feature_list')
-
-@login_required
-@require_POST
-def app_feature_toggle(request, pk):
-    feature = get_object_or_404(AppFeature, pk=pk)
-    feature.is_active = not feature.is_active
-    feature.save(update_fields=['is_active'])
-    return JsonResponse({'is_active': feature.is_active})
-
-@login_required
-@require_POST
-def app_feature_delete(request, pk):
-    feature = get_object_or_404(AppFeature, pk=pk)
-    try:
-        if feature.image:
-            feature.image.delete(save=False)
-    except Exception:
-        pass  # Image may not exist locally or in storage
-    feature.delete()
-    messages.success(request, 'App feature deleted.')
-    return redirect('app_feature_list')
-
-def app_features_api(request):
-    """Public API endpoint for mobile app to fetch active features/banners."""
-    features = AppFeature.objects.filter(is_active=True).order_by('order', '-created_at')
-    data = []
-    for f in features:
-        image_url = None
-        if f.image:
-            try:
-                image_url = request.build_absolute_uri(f.image.url)
-            except Exception:
-                image_url = f.image.url
-        data.append({
-            'id': f.id,
-            'title': f.title,
-            'subtitle': f.subtitle,
-            'image_url': image_url,
-            'order': f.order,
-        })
-    return JsonResponse(data, safe=False)
 
 # ========== MESSAGES/NOTIFICATIONS VIEWS ==========
 
@@ -1240,7 +1148,6 @@ def pos_create_order(request):
             items = data.get('items', [])
             customer_id = data.get('customer_id')
             payment_method = (data.get('payment_method') or 'cash').lower()
-            tax_percent = data.get('tax_percent', 0)
             discount = data.get('discount', 0)
             amount_received = data.get('amount_received', 0)
             notes = data.get('notes', '')
@@ -1303,15 +1210,7 @@ def pos_create_order(request):
                     'error': f"Insufficient raw materials: {', '.join(insufficient_materials)}"
                 }, status=400)
             
-            # Tax/discount
-            try:
-                tax_percent = float(tax_percent or 0)
-            except (TypeError, ValueError):
-                return JsonResponse({'error': 'Invalid tax percent'}, status=400)
-
-            if tax_percent < 0 or tax_percent > 100:
-                return JsonResponse({'error': 'Tax percent must be between 0 and 100'}, status=400)
-
+            # Discount only (tax removed from POS)
             try:
                 discount = float(discount or 0)
             except (TypeError, ValueError):
@@ -1320,8 +1219,8 @@ def pos_create_order(request):
             if discount < 0:
                 return JsonResponse({'error': 'Discount cannot be negative'}, status=400)
 
-            tax = float(subtotal) * (tax_percent / 100.0)
-            total = float(subtotal) + tax - discount
+            tax = 0
+            total = float(subtotal) - discount
 
             if total < 0:
                 return JsonResponse({'error': 'Total cannot be negative'}, status=400)

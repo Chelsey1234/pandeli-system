@@ -1,28 +1,29 @@
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
-            <i class="fas fa-trophy me-2 text-warning"></i>
-            Top Products
-        </h5>
-        <div class="d-flex align-items-center">
-            <select class="form-select form-select-sm w-auto me-2" id="productPeriod" onchange="ProductsChartManager.changePeriod(this.value)">
+<div class="card overflow-hidden" style="animation:fadeUp 0.5s ease 0.2s both;">
+    <div class="card-header">
+        <span class="card-title flex items-center gap-2">
+            <i class="fas fa-trophy" style="color:#C98A6B;"></i> Top Products
+        </span>
+        <div class="flex gap-2">
+            <select class="form-input" style="width:auto;padding:0.25rem 0.5rem;font-size:0.75rem;"
+                    id="productPeriod" onchange="ProductsChartManager.changePeriod(this.value)">
                 <option value="7">7 Days</option>
                 <option value="30" selected>30 Days</option>
                 <option value="90">90 Days</option>
             </select>
-            <select class="form-select form-select-sm w-auto" id="productChartType" onchange="ProductsChartManager.toggleType()">
+            <select class="form-input" style="width:auto;padding:0.25rem 0.5rem;font-size:0.75rem;"
+                    id="productChartType" onchange="ProductsChartManager.toggleType()">
                 <option value="sales">Sales (&#8369;)</option>
                 <option value="quantity">Quantity</option>
             </select>
         </div>
     </div>
     <div class="card-body">
-        <div class="chart-container" style="min-height: 280px; position: relative;">
+        <div style="position:relative; min-height:260px;">
             <canvas id="topProductsChart"></canvas>
         </div>
-        <div id="productsNoData" class="text-center py-5 text-muted" style="display: none;">
-            <i class="fas fa-box-open fa-3x mb-3"></i>
-            <p>No product sales data available for the selected period</p>
+        <div id="productsNoData" class="hidden text-center py-10 muted-text">
+            <i class="fas fa-box-open text-3xl mb-3 block" style="color:#e8d5c8;"></i>
+            No product data for selected period
         </div>
     </div>
 </div>

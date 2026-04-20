@@ -21,12 +21,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'code', 'description']
     ordering_fields = ['name', 'price', 'stock', 'created_at']
 
-    def get_permissions(self):
-        # Allow unauthenticated access to read-only product endpoints
-        if self.action in ['list', 'retrieve', 'new_arrivals', 'best_sellers']:
-            return []
-        return [IsAuthenticated()]
-
     def get_queryset(self):
         qs = Product.objects.all()
         archived = self.request.query_params.get('archived')
@@ -34,15 +28,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             return qs.filter(is_archived=True)
         if archived in ('all',):
             return qs
-        
-        # Support filtering by is_best_seller and is_new_arrival via query params
-        is_best_seller = self.request.query_params.get('is_best_seller')
-        is_new_arrival = self.request.query_params.get('is_new_arrival')
-        if is_best_seller in ('true', '1', 'True'):
-            return qs.filter(is_archived=False, is_best_seller=True)
-        if is_new_arrival in ('true', '1', 'True'):
-            return qs.filter(is_archived=False, is_new_arrival=True)
-        
         return qs.filter(is_archived=False)
 
     def _parse_recipes(self, request):
@@ -87,10 +72,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        data = request.data.copy()
-        data.pop('recipes', None)
-
-        serializer = self.get_serializer(data=data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             product = serializer.save()
@@ -107,10 +89,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        data = request.data.copy()
-        data.pop('recipes', None)
-
-        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             product = serializer.save()
@@ -176,40 +155,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(product)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
-    def toggle_new_arrival(self, request, pk=None):
-        product = self.get_object()
-        product.is_new_arrival = not product.is_new_arrival
-        product.save(update_fields=['is_new_arrival'])
-        return Response({'is_new_arrival': product.is_new_arrival})
-
-    @action(detail=True, methods=['post'])
-    def toggle_best_seller(self, request, pk=None):
-        product = self.get_object()
-        product.is_best_seller = not product.is_best_seller
-        product.save(update_fields=['is_best_seller'])
-        return Response({'is_best_seller': product.is_best_seller})
-
-    @action(detail=False, methods=['get'], permission_classes=[])
-    def new_arrivals(self, request):
-        """Public endpoint — returns products marked as New Arrival for app home screen"""
-        products = Product.objects.filter(
-            is_new_arrival=True,
-            is_archived=False,
-        ).order_by('-created_at')
-        serializer = self.get_serializer(products, many=True, context={'request': request})
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'], permission_classes=[])
-    def best_sellers(self, request):
-        """Public endpoint — returns products marked as Best Seller for app home screen"""
-        products = Product.objects.filter(
-            is_best_seller=True,
-            is_archived=False,
-        ).order_by('name')
-        serializer = self.get_serializer(products, many=True, context={'request': request})
-        return Response(serializer.data)
-
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all().prefetch_related('items__product')
@@ -257,6 +202,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             
             # Use Decimal for calculations
             subtotal = Decimal('0.00')
+            total_quantity = 0
             
             # Create order items
             for item_data in items_data:
@@ -274,6 +220,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     # Calculate item total - convert to Decimal
                     item_total = product.price * quantity
                     subtotal += item_total
+                    total_quantity += quantity
                     
                     # Create order item
                     OrderItem.objects.create(
@@ -299,13 +246,20 @@ class OrderViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_400_BAD_REQUEST
                     )
             
-            # No tax - use original price as total
+            # Auto-apply 10% discount for online orders with 10+ total items
             tax = Decimal('0')
-            total = subtotal
-            
+            if order_type == 'online' and total_quantity >= 10:
+                discount = (subtotal * Decimal('0.10')).quantize(Decimal('0.01'))
+                order.notes = (notes + ' [Auto 10% bulk discount applied]').strip()
+            else:
+                discount = Decimal(str(order.discount or 0))
+
+            total = subtotal - discount
+
             # Update order with calculated values
             order.subtotal = subtotal
             order.tax = tax
+            order.discount = discount
             order.total = total
             order.save()
         
@@ -360,17 +314,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.save()
             
             # Create notification
-            try:
-                if order.customer and order.customer.user:
-                    Notification.objects.create(
-                        title=f"Order #{order.order_number} Status Updated",
-                        message=f"Your order status is now: {order.get_status_display()}",
-                        notification_type='order',
-                        recipient_type='customer',
-                        recipient_user=order.customer.user
-                    )
-            except Exception:
-                pass
+            if order.customer and order.customer.user:
+                Notification.objects.create(
+                    title=f"Order #{order.order_number} Status Updated",
+                    message=f"Your order status is now: {order.get_status_display()}",
+                    notification_type='order',
+                    recipient_type='customer',
+                    recipient_user=order.customer.user
+                )
             
             serializer = self.get_serializer(order)
             return Response(serializer.data)
