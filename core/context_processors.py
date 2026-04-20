@@ -28,23 +28,18 @@ def notifications(request):
     if hasattr(request, 'user') and request.user.is_authenticated:
         try:
             from .models import Notification
-            
-            # Check if the Notification table exists
-            from django.db import connection
-            if 'core_notification' in connection.introspection.table_names():
-                unread_count = Notification.objects.filter(
-                    recipient_user=request.user,
-                    is_read=False
-                ).count()
-                
-                recent_notifications = Notification.objects.filter(
-                    recipient_user=request.user
-                ).order_by('-created_at')[:5]
-                
-                context = {
-                    'unread_notifications_count': unread_count,
-                    'recent_notifications': recent_notifications,
-                }
+            unread_count = Notification.objects.filter(
+                recipient_user=request.user,
+                is_read=False
+            ).count()
+            recent_notifications = Notification.objects.filter(
+                recipient_user=request.user
+            ).only('id', 'title', 'message', 'notification_type', 'is_read', 'created_at', 'link'
+            ).order_by('-created_at')[:5]
+            context = {
+                'unread_notifications_count': unread_count,
+                'recent_notifications': recent_notifications,
+            }
         except Exception as e:
             logger.warning(f"Could not load notifications: {e}")
     
@@ -64,16 +59,11 @@ def products_context(request):
     if hasattr(request, 'user') and request.user.is_authenticated:
         try:
             from .models import Product, Customer
-            
-            # For Create New Order modal: show all products so admin can order any product
-            products = Product.objects.all().order_by('name')[:100]
-            
-            # Get customers for the order modal
-            customers = Customer.objects.all().order_by('name')[:50]
-            
             context = {
-                'products': products,
-                'customers': customers,
+                'products': Product.objects.filter(
+                    is_archived=False, is_available=True
+                ).only('id', 'name', 'price', 'stock', 'category').order_by('name')[:50],
+                'customers': Customer.objects.only('id', 'name').order_by('name')[:30],
             }
         except Exception as e:
             logger.warning(f"Could not load products/customers: {e}")

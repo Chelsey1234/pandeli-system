@@ -113,12 +113,23 @@ urlpatterns = [
          name='create_bulk_notification'),
     
     # ------------------------------------------
+    # APP FEATURES (app home screen carousel)
+    # ------------------------------------------
+    path('products/app-features/', views.app_feature_list, name='app_feature_list'),
+    path('products/app-features/add/', views.app_feature_add, name='app_feature_add'),
+    path('products/app-features/<int:pk>/toggle/', views.app_feature_toggle, name='app_feature_toggle'),
+    path('products/app-features/<int:pk>/delete/', views.app_feature_delete, name='app_feature_delete'),
+    path('api/app-features/', views.app_features_api, name='app_features_api'),
+
+    # ------------------------------------------
+    # PUBLIC PAGES (no login required)
+    # ------------------------------------------
+    path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
+    path('privacy_policy.php', views.privacy_policy, name='privacy_policy_php'),
+    path('privacy_policy.php/', views.privacy_policy, name='privacy_policy_php_slash'),
+
+    # ------------------------------------------
     # API (includes all router URLs)
-    # This will create endpoints like:
-    # /api/products/
-    # /api/orders/
-    # /api/customers/
-    # etc.
     # ------------------------------------------
     path('api/', include(router.urls)),
 ]

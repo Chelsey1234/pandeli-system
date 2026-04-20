@@ -5,23 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pandeli - {% block title %}Dashboard{% endblock %}</title>
 
+    <!-- Preconnect for faster external resource loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+
+    <!-- Google Fonts — display=swap prevents render blocking -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Tailwind CSS with custom brand color -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        /* 60-30-10 palette */
-                        canvas:  '#F5EDE8',   /* 60% — warm cream background */
+                        canvas:  '#F5EDE8',
                         brand: {
-                            DEFAULT: '#C98A6B', /* 30% — terracotta */
+                            DEFAULT: '#C98A6B',
                             light:   '#dba98e',
                             dark:    '#a86b4e',
                             50:      '#fdf5f0',
                             100:     '#f7e4d8',
                         },
                         accent: {
-                            DEFAULT: '#7C4A2D', /* 10% — deep brown CTA */
+                            DEFAULT: '#7C4A2D',
                             light:   '#9e6040',
                             dark:    '#5c3520',
                         }
@@ -33,11 +40,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
+
+    {% block extra_head %}{% endblock %}
 
     {% load static %}
     <link rel="stylesheet" href="{% static 'core/css/style.css' %}">

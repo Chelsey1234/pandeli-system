@@ -216,25 +216,28 @@ def dashboard(request):
 
 @login_required
 def product_list(request):
-    products = Product.objects.filter(is_archived=False)
-    archived_products = Product.objects.filter(is_archived=True).order_by('-archived_at', '-updated_at')
-    categories = Category.objects.all()
-    raw_materials = RawMaterial.objects.all().order_by('name')
-    
-    # Filter by category
+    products = Product.objects.filter(is_archived=False).only(
+        'id', 'code', 'name', 'category', 'price', 'cost', 'stock',
+        'low_stock_threshold', 'image', 'is_available', 'is_new_arrival', 'is_best_seller'
+    )
+    archived_products = Product.objects.filter(is_archived=True).only(
+        'id', 'code', 'name', 'category', 'archived_at'
+    ).order_by('-archived_at', '-updated_at')[:50]
+    categories = Product.CATEGORY_CHOICES
+    raw_materials = RawMaterial.objects.only('id', 'name', 'unit').order_by('name')
+
     category = request.GET.get('category')
     if category:
         products = products.filter(category=category)
-    
-    # Search
+
     search = request.GET.get('search')
     if search:
         products = products.filter(
-            Q(name__icontains=search) | 
+            Q(name__icontains=search) |
             Q(code__icontains=search) |
             Q(description__icontains=search)
         )
-    
+
     context = {
         'products': products,
         'archived_products': archived_products,
@@ -1058,6 +1061,71 @@ def export_data(request):
     
     wb.save(response)
     return response
+
+# ========== PUBLIC VIEWS ==========
+
+def privacy_policy(request):
+    from django.http import HttpResponse
+    html = """<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Pandeli Privacy Policy</title><style>:root{--primary:#D39A73;--accent:#B8744C;--text:#3E2C23;--bg:#fdf8f5;--card:#ffffff;}body{margin:0;font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);}.header{background:linear-gradient(135deg,var(--primary),var(--accent));color:white;padding:40px 20px;text-align:center;border-bottom-left-radius:30px;border-bottom-right-radius:30px;}.header h1{margin:0;}.container{max-width:900px;margin:-20px auto 40px;padding:20px;}.card{background:var(--card);padding:20px;margin-bottom:20px;border-radius:15px;box-shadow:0 4px 12px rgba(0,0,0,0.05);}h2{color:var(--accent);}.notice{background:rgba(211,154,115,0.15);border-left:4px solid var(--primary);padding:12px;border-radius:8px;margin-top:10px;}.footer{text-align:center;font-size:13px;color:#888;padding:20px;}</style></head><body><div class="header"><h1>Pandeli Privacy Policy</h1><p>Last updated: April 16, 2026</p></div><div class="container"><div class="card"><p>This Privacy Policy explains how we collect, use, and protect your data.</p><div class="notice">By using the Service, you agree to this Privacy Policy.</div></div><div class="card"><h2>Data We Collect</h2><ul><li>Email, name, phone number</li><li>Usage data (IP, device, activity)</li><li>Location, contacts, camera (with permission)</li></ul></div><div class="card"><h2>How We Use Data</h2><ul><li>Provide and maintain service</li><li>Improve user experience</li><li>Send updates and notifications</li></ul></div><div class="card"><h2>Your Rights</h2><ul><li>Access your data</li><li>Edit or delete your information</li></ul></div><div class="card"><h2>Contact</h2><p>Email: <strong>pandelibakehouse@gmail.com</strong></p></div></div><div class="footer">&copy; 2026 Pandeli</div></body></html>"""
+    return HttpResponse(html)
+
+# ========== APP FEATURES VIEWS ==========
+
+@login_required
+def app_feature_list(request):
+    features = AppFeature.objects.all()
+    return render(request, 'core/app_feature_list.html', {'features': features})
+
+@login_required
+@require_POST
+def app_feature_add(request):
+    title = request.POST.get('title', '')
+    subtitle = request.POST.get('subtitle', '')
+    order = int(request.POST.get('order', 0))
+    image = request.FILES.get('image')
+    if not image:
+        messages.error(request, 'Image is required.')
+        return redirect('app_feature_list')
+    try:
+        AppFeature.objects.create(title=title, subtitle=subtitle, image=image, order=order)
+        messages.success(request, 'App feature added successfully.')
+    except Exception as e:
+        messages.error(request, f'Error uploading image: {str(e)}')
+    return redirect('app_feature_list')
+
+@login_required
+@require_POST
+def app_feature_toggle(request, pk):
+    feature = get_object_or_404(AppFeature, pk=pk)
+    feature.is_active = not feature.is_active
+    feature.save(update_fields=['is_active'])
+    return JsonResponse({'is_active': feature.is_active})
+
+@login_required
+@require_POST
+def app_feature_delete(request, pk):
+    feature = get_object_or_404(AppFeature, pk=pk)
+    try:
+        if feature.image:
+            feature.image.delete(save=False)
+    except Exception:
+        pass
+    feature.delete()
+    messages.success(request, 'App feature deleted.')
+    return redirect('app_feature_list')
+
+def app_features_api(request):
+    features = AppFeature.objects.filter(is_active=True).order_by('order', '-created_at')
+    data = []
+    for f in features:
+        image_url = None
+        if f.image:
+            try:
+                image_url = request.build_absolute_uri(f.image.url)
+            except Exception:
+                image_url = f.image.url
+        data.append({'id': f.id, 'title': f.title, 'subtitle': f.subtitle, 'image_url': image_url, 'order': f.order})
+    return JsonResponse(data, safe=False)
 
 # ========== SUPPLIER VIEWS ==========
 
