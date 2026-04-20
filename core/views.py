@@ -712,26 +712,34 @@ def forecast(request):
 def run_forecast(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
-        days = int(request.POST.get('days', 30))
+        days = min(int(request.POST.get('days', 14)), 90)  # cap at 90
 
         created_count = 0
-        if product_id:
-            product = get_object_or_404(Product, id=product_id)
-            result = generate_sales_forecast(product, days)
-            created_count = len(result or [])
-        else:
-            products = Product.objects.all()
-            for product in products:
-                result = generate_sales_forecast(product, days)
-                created_count += len(result or [])
+        try:
+            if product_id:
+                product = get_object_or_404(Product, id=product_id)
+                result = generate_simple_forecast(product, days)
+                created_count = len(result or [])
+            else:
+                # Limit to 5 products to avoid timeout on Railway
+                products = Product.objects.filter(
+                    is_archived=False, is_available=True
+                ).order_by('-updated_at')[:5]
+                for product in products:
+                    try:
+                        result = generate_simple_forecast(product, days)
+                        created_count += len(result or [])
+                    except Exception:
+                        continue
+        except Exception as e:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': str(e)})
+            messages.error(request, f'Forecast error: {str(e)}')
+            return redirect('forecast')
 
-        # Return JSON for AJAX calls, redirect for normal POST
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'success': True, 'count': created_count})
-        if created_count > 0:
-            messages.success(request, f'Forecast generated successfully! ({created_count} forecast rows)')
-        else:
-            messages.warning(request, 'No forecast rows were generated. Add order history first, then try again.')
+        messages.success(request, f'Forecast generated! ({created_count} entries)')
         return redirect('forecast')
 
     return redirect('forecast')

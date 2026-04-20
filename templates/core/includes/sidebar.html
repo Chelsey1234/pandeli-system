@@ -6,9 +6,10 @@
     <div class="flex-shrink-0 flex flex-col items-center justify-center py-5 px-4"
          style="border-bottom:1px solid #f0e0d6; min-height:100px;">
         <a href="{% url 'dashboard' %}" class="flex-shrink-0 flex flex-col items-center">
-            <img src="/media/products/pandelicover.jpg" alt="Pandeli"
+            <img src="{% static 'core/images/pandeli_logo.png' %}" alt="Pandeli"
                  class="object-cover rounded-2xl hover:scale-105 transition-transform duration-200"
-                 style="width:64px;height:64px;border:2px solid #ecddd5;box-shadow:0 2px 8px rgba(124,74,45,0.12);">
+                 style="width:64px;height:64px;border:2px solid #ecddd5;box-shadow:0 2px 8px rgba(124,74,45,0.12);"
+                 onerror="this.src='{% static 'core/images/pandelicover.jpg' %}';">
         </a>
         <span class="sidebar-label mt-2 font-bold text-sm tracking-wide"
               style="white-space:nowrap;color:#7C4A2D;"></span>
