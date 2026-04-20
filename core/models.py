@@ -58,6 +58,8 @@ class Product(models.Model):
     is_available = models.BooleanField(default=True)
     is_archived = models.BooleanField(default=False)
     archived_at = models.DateTimeField(null=True, blank=True)
+    is_new_arrival = models.BooleanField(default=False)
+    is_best_seller = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -178,6 +180,13 @@ class Order(models.Model):
         if not self.order_number:
             self.order_number = f"ORD-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
         super().save(*args, **kwargs)
+
+    def get_customer_safe(self):
+        """Safely get customer — handles UUID customer_id from mobile app"""
+        try:
+            return self.customer
+        except Exception:
+            return None
     
     def __str__(self):
         return self.order_number
@@ -412,3 +421,19 @@ class ImportHistory(models.Model):
     
     def __str__(self):
         return f"{self.import_type} - {self.created_at}"
+
+
+class AppFeature(models.Model):
+    title = models.CharField(max_length=200, blank=True)
+    subtitle = models.CharField(max_length=300, blank=True)
+    image = models.ImageField(upload_to='app_features/')
+    is_active = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', '-created_at']
+
+    def __str__(self):
+        return self.title or f"App Feature #{self.pk}"
