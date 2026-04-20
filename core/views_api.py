@@ -21,6 +21,12 @@ class ProductViewSet(viewsets.ModelViewSet):
     search_fields = ['name', 'code', 'description']
     ordering_fields = ['name', 'price', 'stock', 'created_at']
 
+    def get_permissions(self):
+        # Allow unauthenticated access to read-only product endpoints
+        if self.action in ['list', 'retrieve', 'new_arrivals', 'best_sellers']:
+            return []
+        return [IsAuthenticated()]
+
     def get_queryset(self):
         qs = Product.objects.all()
         archived = self.request.query_params.get('archived')
@@ -28,6 +34,15 @@ class ProductViewSet(viewsets.ModelViewSet):
             return qs.filter(is_archived=True)
         if archived in ('all',):
             return qs
+        
+        # Support filtering by is_best_seller and is_new_arrival via query params
+        is_best_seller = self.request.query_params.get('is_best_seller')
+        is_new_arrival = self.request.query_params.get('is_new_arrival')
+        if is_best_seller in ('true', '1', 'True'):
+            return qs.filter(is_archived=False, is_available=True, is_best_seller=True)
+        if is_new_arrival in ('true', '1', 'True'):
+            return qs.filter(is_archived=False, is_available=True, is_new_arrival=True)
+        
         return qs.filter(is_archived=False)
 
     def _parse_recipes(self, request):
