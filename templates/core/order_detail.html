@@ -61,26 +61,26 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Customer Information</span></div>
         <div class="card-body">
-            {% if order.customer %}
+            {% if customer %}
             <dl class="space-y-3">
                 <div class="flex justify-between py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Name</dt><dd class="font-semibold body-text">{{ order.customer.name }}</dd>
+                    <dt class="label-text">Name</dt><dd class="font-semibold body-text">{{ customer.name }}</dd>
                 </div>
                 <div class="flex justify-between py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Email</dt><dd class="muted-text">{{ order.customer.email }}</dd>
+                    <dt class="label-text">Email</dt><dd class="muted-text">{{ customer.email }}</dd>
                 </div>
                 <div class="flex justify-between py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Phone</dt><dd class="muted-text">{{ order.customer.phone }}</dd>
+                    <dt class="label-text">Phone</dt><dd class="muted-text">{{ customer.phone }}</dd>
                 </div>
                 <div class="flex justify-between py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Address</dt><dd class="muted-text">{{ order.customer.address }}</dd>
+                    <dt class="label-text">Address</dt><dd class="muted-text">{{ customer.address }}</dd>
                 </div>
                 <div class="flex justify-between py-1">
-                    <dt class="label-text">Loyalty Points</dt><dd class="body-text">{{ order.customer.loyalty_points }}</dd>
+                    <dt class="label-text">Loyalty Points</dt><dd class="body-text">{{ customer.loyalty_points }}</dd>
                 </div>
             </dl>
             {% else %}
-            <p class="muted-text italic">Walk-in Customer</p>
+            <p class="muted-text italic">Online / Walk-in Customer</p>
             {% endif %}
         </div>
     </div>
