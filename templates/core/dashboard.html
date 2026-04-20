@@ -38,9 +38,11 @@
     window.salesData   = {{ sales_data|safe }};
     window.bestSellers = [
         {% for product in best_sellers %}
-        { name: "{{ product.product__name|escapejs }}", quantity: {{ product.quantity }} }{% if not forloop.last %},{% endif %}
+        { name: "{{ product.product__name|escapejs }}", quantity: {{ product.quantity|default:0 }} }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
+    // Debug: log to console
+    console.log('Best sellers from server:', window.bestSellers);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'core/js/dashboard/charts.js' %}"></script>

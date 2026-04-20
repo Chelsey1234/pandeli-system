@@ -392,7 +392,10 @@ class SupplierViewSet(viewsets.ModelViewSet):
 
 class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
-    
+
+    def list(self, request):
+        """Required by router — returns basic info"""
+        return Response({'status': 'ok'})
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """Get dashboard summary data — all orders regardless of payment status"""

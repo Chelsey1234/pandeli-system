@@ -8,8 +8,18 @@ const BestSellersChartManager = {
         if (this.chart) { this.chart.destroy(); this.chart = null; }
 
         var raw    = window.bestSellers || [];
-        var labels = raw.length ? raw.map(function(i) { return i.name; }) : ['No data'];
-        var values = raw.length ? raw.map(function(i) { return i.quantity; }) : [0];
+        // Filter out zero-quantity items
+        raw = raw.filter(function(i) { return i.quantity > 0; });
+
+        if (!raw.length) {
+            var noData = document.getElementById('bestSellersNoData');
+            if (noData) noData.classList.remove('hidden');
+            canvas.style.display = 'none';
+            return;
+        }
+
+        var labels = raw.map(function(i) { return i.name; });
+        var values = raw.map(function(i) { return i.quantity; });
         var colors = window.rdylbuColors ? window.rdylbuColors(labels.length) : ['#d73027','#fdae61','#ffffbf','#abd9e9','#4575b4'];
 
         var totalDuration = 1000;
