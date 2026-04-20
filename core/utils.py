@@ -1,8 +1,6 @@
-import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 from .models import OrderItem, Product, SalesForecast, Order, Notification, RawMaterial
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Avg
 from django.utils import timezone
 import logging as _logging
 import logging

@@ -696,36 +696,45 @@ def export_sales_report(request):
 
 @login_required
 def forecast(request):
-    # Include all products so forecasting still works even if stock is 0
-    products = Product.objects.all().order_by('name')
+    products = Product.objects.filter(is_archived=False).order_by('name')
     
-    # Get forecasts
+    # Get upcoming forecasts
     forecasts = SalesForecast.objects.filter(
         forecast_date__gte=timezone.now().date()
-    ).select_related('product').order_by('forecast_date')[:30]
+    ).select_related('product').order_by('forecast_date', 'product__name')[:100]
     
-    # Prepare chart data
-    forecast_dates = []
-    forecast_values = []
-    for forecast in forecasts:
-        forecast_dates.append(forecast.forecast_date.strftime('%Y-%m-%d'))
-        forecast_values.append(forecast.predicted_quantity)
-    
-    # Get historical data for comparison
-    historical_data = OrderItem.objects.filter(
-        order__created_at__date__gte=timezone.now().date() - timedelta(days=30)
-    ).values(
-        'order__created_at__date'
-    ).annotate(
-        total=Sum('quantity')
-    ).order_by('order__created_at__date')
-    
-    historical_dates = [item['order__created_at__date'].strftime('%Y-%m-%d') for item in historical_data]
-    historical_values = [item['total'] for item in historical_data]
-    
+    # Summary stats
+    total_predicted = sum(f.predicted_quantity for f in forecasts)
+    avg_daily = round(total_predicted / len(forecasts), 1) if forecasts else 0
+
+    # Chart data — aggregate by date across all products
+    from django.db.models import Sum as DSum
+    forecast_by_date = (
+        SalesForecast.objects.filter(forecast_date__gte=timezone.now().date())
+        .values('forecast_date')
+        .annotate(total=DSum('predicted_quantity'))
+        .order_by('forecast_date')[:14]
+    )
+    forecast_dates = [str(r['forecast_date']) for r in forecast_by_date]
+    forecast_values = [r['total'] for r in forecast_by_date]
+
+    # Historical data — last 14 days
+    historical_data = (
+        OrderItem.objects.filter(
+            order__created_at__date__gte=timezone.now().date() - timedelta(days=14)
+        )
+        .values('order__created_at__date')
+        .annotate(total=DSum('quantity'))
+        .order_by('order__created_at__date')
+    )
+    historical_dates = [str(r['order__created_at__date']) for r in historical_data]
+    historical_values = [r['total'] for r in historical_data]
+
     context = {
         'products': products,
         'forecasts': forecasts,
+        'total_predicted': total_predicted,
+        'avg_daily': avg_daily,
         'forecast_dates': json.dumps(forecast_dates),
         'forecast_values': json.dumps(forecast_values),
         'historical_dates': json.dumps(historical_dates),
@@ -740,29 +749,28 @@ def run_forecast(request):
         days = min(int(request.POST.get('days', 14)), 14)  # cap at 14 days
 
         created_count = 0
-        errors = []
         try:
             if product_id:
+                # Single product — fast
                 product = get_object_or_404(Product, id=product_id)
                 result = generate_simple_forecast(product, days)
                 created_count = len(result or [])
             else:
-                # Run for all non-archived products (up to 20)
-                products = Product.objects.filter(is_archived=False).order_by('-updated_at')[:20]
+                # All products — process max 5 at a time to avoid timeout
+                products = Product.objects.filter(
+                    is_archived=False, is_available=True
+                ).order_by('-updated_at')[:5]
                 for product in products:
                     try:
                         result = generate_simple_forecast(product, days)
                         created_count += len(result or [])
-                    except Exception as e:
-                        errors.append(f"{product.name}: {str(e)}")
+                    except Exception:
                         continue
         except Exception as e:
             messages.error(request, f'Forecast error: {str(e)}')
             return redirect('forecast')
 
-        messages.success(request, f'Forecast generated successfully! ({created_count} forecast entries created/updated)')
-        if errors:
-            messages.warning(request, f'Some products had errors: {"; ".join(errors[:3])}')
+        messages.success(request, f'Forecast generated! ({created_count} entries)')
         return redirect('forecast')
 
     return redirect('forecast')
