@@ -102,6 +102,19 @@
                     <td class="muted">&#8369;{{ item.price|floatformat:2 }}</td>
                     <td class="font-semibold">&#8369;{{ item.subtotal|floatformat:2 }}</td>
                 </tr>
+                {% empty %}
+                    {% if order.product_name %}
+                    <tr>
+                        <td class="font-medium">{{ order.product_name }}</td>
+                        <td>—</td>
+                        <td class="muted">—</td>
+                        <td class="font-semibold">&#8369;{{ order.total|floatformat:2 }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center muted-text py-4">No item details available</td>
+                    </tr>
+                    {% endif %}
                 {% endfor %}
             </tbody>
             <tfoot style="background:#fdf5f0;border-top:1px solid #ecddd5;">

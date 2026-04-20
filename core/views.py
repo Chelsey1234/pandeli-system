@@ -169,17 +169,31 @@ def dashboard(request):
         is_available=True
     )[:10]
     
-    # Best selling products — from OrderItem if available, else empty
-    best_sellers = list(OrderItem.objects.values(
+    # Best selling products — use OrderItem if available, else use product_name from Order
+    best_sellers_oi = list(OrderItem.objects.values(
         'product__name', 'product__id'
     ).annotate(
         quantity=Sum('quantity'),
         total_sales=Sum('subtotal')
     ).order_by('-quantity')[:5])
 
-    # Sales by category — from OrderItem if available
+    if best_sellers_oi:
+        best_sellers = best_sellers_oi
+    else:
+        # Fallback: use product_name stored directly in orders
+        best_sellers = list(
+            Order.objects.exclude(product_name__isnull=True).exclude(product_name='')
+            .values('product_name')
+            .annotate(quantity=Count('id'), total_sales=Sum('total'))
+            .order_by('-quantity')[:5]
+        )
+        # Rename key to match template
+        for b in best_sellers:
+            b['product__name'] = b.pop('product_name', '')
+
+    # Sales by category and top products
     start_30 = today - timedelta(days=30)
-    sales_by_category = list(
+    sales_by_category_oi = list(
         OrderItem.objects.filter(
             order__created_at__date__gte=start_30
         ).values('product__category').annotate(
@@ -187,15 +201,8 @@ def dashboard(request):
             total_qty=Sum('quantity')
         ).order_by('-total_sales')
     )
-    category_labels = []
-    category_sales = []
-    for item in sales_by_category:
-        cat = dict(Product.CATEGORY_CHOICES).get(item['product__category'], item['product__category'].title())
-        category_labels.append(cat)
-        category_sales.append(float(item['total_sales']))
 
-    # Top products — from OrderItem if available
-    top_products_qs = list(
+    top_products_oi = list(
         OrderItem.objects.filter(
             order__created_at__date__gte=start_30
         ).values('product__name').annotate(
@@ -203,9 +210,30 @@ def dashboard(request):
             total_qty=Sum('quantity')
         ).order_by('-total_sales')[:10]
     )
-    top_product_labels = [p['product__name'][:20] for p in top_products_qs]
-    top_product_sales = [float(p['total_sales']) for p in top_products_qs]
-    top_product_qty = [p['total_qty'] for p in top_products_qs]
+
+    if not top_products_oi:
+        # Fallback: use product_name from orders
+        top_products_oi = list(
+            Order.objects.filter(
+                created_at__date__gte=start_30
+            ).exclude(product_name__isnull=True).exclude(product_name='')
+            .values('product_name')
+            .annotate(total_sales=Sum('total'), total_qty=Count('id'))
+            .order_by('-total_sales')[:10]
+        )
+        for p in top_products_oi:
+            p['product__name'] = p.pop('product_name', '')
+
+    category_labels = []
+    category_sales = []
+    for item in sales_by_category_oi:
+        cat = dict(Product.CATEGORY_CHOICES).get(item['product__category'], item['product__category'].title())
+        category_labels.append(cat)
+        category_sales.append(float(item['total_sales']))
+
+    top_product_labels = [p.get('product__name', '')[:20] for p in top_products_oi]
+    top_product_sales = [float(p['total_sales']) for p in top_products_oi]
+    top_product_qty = [p.get('total_qty', 0) for p in top_products_oi]
 
     # Sales graph data (last 7 days) — single query
     from django.db.models.functions import TruncDay as _TruncDay
