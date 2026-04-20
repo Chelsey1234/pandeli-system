@@ -41,8 +41,20 @@
         { name: "{{ product.product__name|escapejs }}", quantity: {{ product.quantity|default:0 }} }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
-    // Debug: log to console
-    console.log('Best sellers from server:', window.bestSellers);
+    // Server-side data for category and top products charts (no AJAX needed)
+    window.categoryData = {
+        labels: {{ category_labels|safe }},
+        sales: {{ category_sales|safe }},
+        quantities: []
+    };
+    window.topProductsData = {
+        labels: {{ top_product_labels|safe }},
+        sales: {{ top_product_sales|safe }},
+        quantities: {{ top_product_qty|safe }}
+    };
+    console.log('Best sellers:', window.bestSellers);
+    console.log('Category data:', window.categoryData);
+    console.log('Top products:', window.topProductsData);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'core/js/dashboard/charts.js' %}"></script>

@@ -392,9 +392,13 @@ class SupplierViewSet(viewsets.ModelViewSet):
 
 class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+    authentication_classes = [
+        __import__('rest_framework.authentication', fromlist=['SessionAuthentication']).SessionAuthentication,
+        __import__('rest_framework.authentication', fromlist=['TokenAuthentication']).TokenAuthentication,
+    ]
 
     def list(self, request):
-        """Required by router — returns basic info"""
+        """Required by router"""
         return Response({'status': 'ok'})
     @action(detail=False, methods=['get'])
     def summary(self, request):

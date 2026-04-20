@@ -6,7 +6,12 @@ const ProductsChartManager = {
 
     init: function() {
         if (!document.getElementById('topProductsChart')) return;
-        this.fetchData();
+        // Use server-side data if available, otherwise fetch via AJAX
+        if (window.topProductsData && window.topProductsData.labels && window.topProductsData.labels.length > 0) {
+            this.createChart(window.topProductsData);
+        } else {
+            this.fetchData();
+        }
     },
 
     fetchData: function() {

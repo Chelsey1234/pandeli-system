@@ -176,17 +176,53 @@ def dashboard(request):
         quantity=Sum('quantity'),
         total_sales=Sum('subtotal')
     ).order_by('-quantity')[:5]
-    
-    # Sales graph data (last 7 days)
+
+    # Sales by category — for server-side rendering
+    start_30 = today - timedelta(days=30)
+    sales_by_category = list(
+        OrderItem.objects.filter(
+            order__created_at__date__gte=start_30
+        ).values('product__category').annotate(
+            total_sales=Sum('subtotal'),
+            total_qty=Sum('quantity')
+        ).order_by('-total_sales')
+    )
+    category_labels = []
+    category_sales = []
+    for item in sales_by_category:
+        cat = dict(Product.CATEGORY_CHOICES).get(item['product__category'], item['product__category'].title())
+        category_labels.append(cat)
+        category_sales.append(float(item['total_sales']))
+
+    # Top products — for server-side rendering
+    top_products_qs = list(
+        OrderItem.objects.filter(
+            order__created_at__date__gte=start_30
+        ).values('product__name').annotate(
+            total_sales=Sum('subtotal'),
+            total_qty=Sum('quantity')
+        ).order_by('-total_sales')[:10]
+    )
+    top_product_labels = [p['product__name'][:20] for p in top_products_qs]
+    top_product_sales = [float(p['total_sales']) for p in top_products_qs]
+    top_product_qty = [p['total_qty'] for p in top_products_qs]
+
+    # Sales graph data (last 7 days) — single query
+    from django.db.models.functions import TruncDay as _TruncDay
+    sales_qs = (
+        Order.objects.filter(created_at__date__gte=today - timedelta(days=6))
+        .annotate(day=_TruncDay('created_at'))
+        .values('day')
+        .annotate(total=Sum('total'))
+        .order_by('day')
+    )
+    sales_by_day = {row['day'].date(): float(row['total'] or 0) for row in sales_qs}
     last_7_days = []
     sales_data = []
     for i in range(6, -1, -1):
         date = today - timedelta(days=i)
         last_7_days.append(date.strftime('%Y-%m-%d'))
-        daily_total = Order.objects.filter(
-            created_at__date=date,
-        ).aggregate(total=Sum('total'))['total'] or 0
-        sales_data.append(float(daily_total))
+        sales_data.append(sales_by_day.get(date, 0))
     
     # Recent orders
     recent_orders = Order.objects.select_related('customer').order_by('-created_at')[:5]
@@ -206,8 +242,13 @@ def dashboard(request):
         'recent_orders': recent_orders,
         'sales_labels': json.dumps(last_7_days),
         'sales_data': json.dumps(sales_data),
-        'products': products,  # Add this
-        'customers': customers,  # Add this
+        'category_labels': json.dumps(category_labels),
+        'category_sales': json.dumps(category_sales),
+        'top_product_labels': json.dumps(top_product_labels),
+        'top_product_sales': json.dumps(top_product_sales),
+        'top_product_qty': json.dumps(top_product_qty),
+        'products': products,
+        'customers': customers,
     }
     
     return render(request, 'core/dashboard.html', context)

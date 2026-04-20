@@ -6,7 +6,12 @@ const CategoryChartManager = {
 
     init: function() {
         if (!document.getElementById('categoryBarChart')) return;
-        this.fetchData();
+        // Use server-side data if available, otherwise fetch via AJAX
+        if (window.categoryData && window.categoryData.labels && window.categoryData.labels.length > 0) {
+            this.createChart(window.categoryData);
+        } else {
+            this.fetchData();
+        }
     },
 
     fetchData: function() {
