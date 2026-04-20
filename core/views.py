@@ -1123,8 +1123,11 @@ def app_feature_add(request):
     if not image:
         messages.error(request, 'Image is required.')
         return redirect('app_feature_list')
-    AppFeature.objects.create(title=title, subtitle=subtitle, image=image, order=order)
-    messages.success(request, 'App feature added successfully.')
+    try:
+        AppFeature.objects.create(title=title, subtitle=subtitle, image=image, order=order)
+        messages.success(request, 'App feature added successfully.')
+    except Exception as e:
+        messages.error(request, f'Error uploading image: {str(e)}')
     return redirect('app_feature_list')
 
 @login_required
@@ -1139,7 +1142,11 @@ def app_feature_toggle(request, pk):
 @require_POST
 def app_feature_delete(request, pk):
     feature = get_object_or_404(AppFeature, pk=pk)
-    feature.image.delete(save=False)
+    try:
+        if feature.image:
+            feature.image.delete(save=False)
+    except Exception:
+        pass  # Image may not exist locally or in storage
     feature.delete()
     messages.success(request, 'App feature deleted.')
     return redirect('app_feature_list')
