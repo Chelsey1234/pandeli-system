@@ -366,62 +366,68 @@ def confirm_order(request, pk):
                 messages.error(request, f"Insufficient stock for: {', '.join(insufficient_stock)}")
                 return redirect('order_detail', pk=pk)
             
-            # Deduct stock
-            for item in order.items.all():
-                old_stock = item.product.stock
-                item.product.stock -= item.quantity
-                item.product.save()
-                
-                # Record transaction
-                InventoryTransaction.objects.create(
-                    product=item.product,
-                    transaction_type='out',
-                    quantity=item.quantity,
-                    previous_stock=old_stock,
-                    new_stock=item.product.stock,
-                    reference=order.order_number,
-                    notes=f"Order confirmation",
-                    created_by=request.user
-                )
-                
-                # Deduct raw materials if recipe exists
-                for recipe in item.product.recipe.all():
-                    material = recipe.raw_material
-                    needed_qty = recipe.quantity * item.quantity
-                    
-                    if material.stock_quantity >= needed_qty:
-                        old_material_stock = material.stock_quantity
-                        material.stock_quantity -= needed_qty
-                        material.save()
+            try:
+                with transaction.atomic():
+                    # Deduct stock
+                    for item in order.items.all():
+                        product = Product.objects.select_for_update().get(pk=item.product.pk)
+                        old_stock = product.stock
+                        product.stock -= item.quantity
+                        product.save()
                         
-                        RawMaterialTransaction.objects.create(
-                            raw_material=material,
+                        # Record transaction
+                        InventoryTransaction.objects.create(
+                            product=product,
                             transaction_type='out',
-                            quantity=needed_qty,
-                            previous_stock=old_material_stock,
-                            new_stock=material.stock_quantity,
+                            quantity=item.quantity,
+                            previous_stock=old_stock,
+                            new_stock=product.stock,
                             reference=order.order_number,
-                            notes=f"Used for {item.product.name}",
+                            notes="Order confirmation",
                             created_by=request.user
                         )
+                        
+                        # Deduct raw materials if recipe exists
+                        for recipe in product.recipe.all():
+                            material = recipe.raw_material
+                            needed_qty = recipe.quantity * item.quantity
+                            
+                            if material.stock_quantity >= needed_qty:
+                                old_material_stock = material.stock_quantity
+                                material.stock_quantity -= needed_qty
+                                material.save()
+                                
+                                RawMaterialTransaction.objects.create(
+                                    raw_material=material,
+                                    transaction_type='out',
+                                    quantity=needed_qty,
+                                    previous_stock=old_material_stock,
+                                    new_stock=material.stock_quantity,
+                                    reference=order.order_number,
+                                    notes=f"Used for {product.name}",
+                                    created_by=request.user
+                                )
+                    
+                    order.status = 'confirmed'
+                    order.save()
+                
+                # Create notification outside transaction — failure here won't rollback the order
+                try:
+                    if order.customer and order.customer.user:
+                        Notification.objects.create(
+                            title=f"Order #{order.order_number} Confirmed",
+                            message="Your order has been confirmed and is being prepared.",
+                            notification_type='order',
+                            recipient_type='customer',
+                            recipient_user=order.customer.user
+                        )
+                except Exception:
+                    pass
+                
+                messages.success(request, f'Order #{order.order_number} confirmed successfully.')
             
-            order.status = 'confirmed'
-            order.save()
-            
-            # Create notification — safely handle UUID customer_id from mobile app
-            try:
-                if order.customer and order.customer.user:
-                    Notification.objects.create(
-                        title=f"Order #{order.order_number} Confirmed",
-                        message=f"Your order has been confirmed and is being prepared.",
-                        notification_type='order',
-                        recipient_type='customer',
-                        recipient_user=order.customer.user
-                    )
-            except Exception:
-                pass
-            
-            messages.success(request, f'Order #{order.order_number} confirmed successfully.')
+            except Exception as e:
+                messages.error(request, f'Error confirming order: {str(e)}')
     
     return redirect('order_detail', pk=pk)
 
@@ -718,28 +724,29 @@ def run_forecast(request):
         days = min(int(request.POST.get('days', 14)), 14)  # cap at 14 days
 
         created_count = 0
+        errors = []
         try:
             if product_id:
                 product = get_object_or_404(Product, id=product_id)
                 result = generate_simple_forecast(product, days)
                 created_count = len(result or [])
             else:
-                # Limit to 10 products, use simple forecast only (no Prophet/ARIMA)
-                products = Product.objects.filter(is_archived=False).order_by('-updated_at')[:10]
+                # Run for all non-archived products (up to 20)
+                products = Product.objects.filter(is_archived=False).order_by('-updated_at')[:20]
                 for product in products:
                     try:
                         result = generate_simple_forecast(product, days)
                         created_count += len(result or [])
-                    except Exception:
+                    except Exception as e:
+                        errors.append(f"{product.name}: {str(e)}")
                         continue
         except Exception as e:
             messages.error(request, f'Forecast error: {str(e)}')
             return redirect('forecast')
 
-        if created_count > 0:
-            messages.success(request, f'Forecast generated! ({created_count} rows)')
-        else:
-            messages.warning(request, 'No forecast rows generated. Add order history first.')
+        messages.success(request, f'Forecast generated successfully! ({created_count} forecast entries created/updated)')
+        if errors:
+            messages.warning(request, f'Some products had errors: {"; ".join(errors[:3])}')
         return redirect('forecast')
 
     return redirect('forecast')

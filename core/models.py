@@ -58,6 +58,8 @@ class Product(models.Model):
     is_available = models.BooleanField(default=True)
     is_archived = models.BooleanField(default=False)
     archived_at = models.DateTimeField(null=True, blank=True)
+    is_new_arrival = models.BooleanField(default=False)
+    is_best_seller = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

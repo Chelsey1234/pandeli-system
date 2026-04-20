@@ -51,7 +51,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'is_available']
+    filterset_fields = ['category', 'is_available', 'is_new_arrival', 'is_best_seller']
     search_fields = ['code', 'name', 'description']
     ordering_fields = ['price', 'stock', 'created_at']
     
@@ -69,6 +69,32 @@ class ProductViewSet(viewsets.ModelViewSet):
         low_stock_products = self.queryset.filter(stock__lte=models.F('low_stock_threshold'))
         serializer = self.get_serializer(low_stock_products, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def new_arrivals(self, request):
+        products = self.queryset.filter(is_new_arrival=True, is_archived=False, is_available=True)
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny])
+    def best_sellers(self, request):
+        products = self.queryset.filter(is_best_seller=True, is_archived=False, is_available=True)
+        serializer = self.get_serializer(products, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def toggle_new_arrival(self, request, pk=None):
+        product = self.get_object()
+        product.is_new_arrival = not product.is_new_arrival
+        product.save()
+        return Response({'is_new_arrival': product.is_new_arrival})
+
+    @action(detail=True, methods=['post'])
+    def toggle_best_seller(self, request, pk=None):
+        product = self.get_object()
+        product.is_best_seller = not product.is_best_seller
+        product.save()
+        return Response({'is_best_seller': product.is_best_seller})
     
     @action(detail=True, methods=['get'])
     def recipe(self, request, pk=None):

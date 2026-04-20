@@ -92,35 +92,36 @@ def generate_sales_forecast(product, days=30):
 
 def generate_simple_forecast(product, days=30):
     """
-    Generate simple forecast using moving average
+    Generate simple forecast using moving average.
+    Always generates forecasts even with no order history.
     """
     try:
-        # Get average daily sales from last 30 days
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=30)
         
-        avg_sales = OrderItem.objects.filter(
+        total_qty = OrderItem.objects.filter(
             product=product,
             order__created_at__date__gte=start_date,
             order__created_at__date__lte=end_date,
-        ).aggregate(avg=Sum('quantity') / 30)['avg'] or 0
+        ).aggregate(total=Sum('quantity'))['total'] or 0
         
-        avg_sales = max(1, int(round(avg_sales)))
+        # Average daily sales — minimum 1 to always produce a forecast
+        avg_sales = max(1, round(total_qty / 30))
         
         forecasts = []
         for i in range(days):
-            forecast_date = end_date + timedelta(days=i+1)
-            # Add some random variation
-            variation = np.random.randint(-2, 3)
-            predicted = max(0, avg_sales + variation)
+            forecast_date = end_date + timedelta(days=i + 1)
+            # Small deterministic variation based on day of week
+            dow_factor = [0, 1, 1, 0, 1, 2, 2][forecast_date.weekday()]
+            predicted = max(0, avg_sales + dow_factor)
             
-            forecast_obj, created = SalesForecast.objects.update_or_create(
+            forecast_obj, _ = SalesForecast.objects.update_or_create(
                 product=product,
                 forecast_date=forecast_date,
                 defaults={
                     'predicted_quantity': predicted,
-                    'confidence_lower': max(0, predicted - 5),
-                    'confidence_upper': predicted + 5,
+                    'confidence_lower': max(0, predicted - 2),
+                    'confidence_upper': predicted + 2,
                     'model_used': 'Moving Average'
                 }
             )
