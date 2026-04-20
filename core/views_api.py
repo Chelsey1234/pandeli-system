@@ -395,18 +395,16 @@ class DashboardViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        """Get dashboard summary data"""
+        """Get dashboard summary data — all orders regardless of payment status"""
         today = timezone.now().date()
         start_of_month = today.replace(day=1)
         
         daily_sales = Order.objects.filter(
             created_at__date=today,
-            payment_status='paid'
         ).aggregate(total=Sum('total'))['total'] or 0
         
         monthly_sales = Order.objects.filter(
             created_at__date__gte=start_of_month,
-            payment_status='paid'
         ).aggregate(total=Sum('total'))['total'] or 0
         
         total_orders = Order.objects.filter(created_at__date=today).count()
@@ -417,6 +415,7 @@ class DashboardViewSet(viewsets.ViewSet):
             is_available=True
         ).count()
         
+        # Best sellers — all time, all orders
         best_sellers = OrderItem.objects.values(
             'product__name'
         ).annotate(
@@ -429,7 +428,7 @@ class DashboardViewSet(viewsets.ViewSet):
             'total_orders': total_orders,
             'pending_orders': pending_orders,
             'low_stock_count': low_stock_count,
-            'best_sellers': best_sellers
+            'best_sellers': list(best_sellers),
         })
     
     @action(detail=False, methods=['get'])

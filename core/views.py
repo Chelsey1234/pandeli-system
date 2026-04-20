@@ -169,13 +169,13 @@ def dashboard(request):
         is_available=True
     )[:10]
     
-    # Best selling products
+    # Best selling products — use 'quantity' to match JS (i.quantity)
     best_sellers = OrderItem.objects.values(
         'product__name', 'product__id'
     ).annotate(
-        total_quantity=Sum('quantity'),
+        quantity=Sum('quantity'),
         total_sales=Sum('subtotal')
-    ).order_by('-total_quantity')[:5]
+    ).order_by('-quantity')[:5]
     
     # Sales graph data (last 7 days)
     last_7_days = []

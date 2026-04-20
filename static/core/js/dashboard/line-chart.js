@@ -121,7 +121,7 @@ const LineChartManager = {
     refresh: function(days) {
         days = days || 7;
         var self = this;
-        fetch('/api/dashboard/sales_chart/?days=' + days)
+        fetch('/api/dashboard/sales_chart/?days=' + days, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!self.chart) return;

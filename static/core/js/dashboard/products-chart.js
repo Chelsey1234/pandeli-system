@@ -11,7 +11,7 @@ const ProductsChartManager = {
 
     fetchData: function() {
         var self = this;
-        fetch('/api/dashboard/top_products/?days=' + this.currentPeriod)
+        fetch('/api/dashboard/top_products/?days=' + this.currentPeriod, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(data) { self.createChart(data); })
             .catch(function() { self.showNoData(); });

@@ -11,7 +11,7 @@ const CategoryChartManager = {
 
     fetchData: function() {
         var self = this;
-        fetch('/api/dashboard/sales_by_category/?days=' + this.currentPeriod)
+        fetch('/api/dashboard/sales_by_category/?days=' + this.currentPeriod, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(data) { self.createChart(data); })
             .catch(function() { self.showNoData(); });

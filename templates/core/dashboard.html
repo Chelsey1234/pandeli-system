@@ -38,7 +38,7 @@
     window.salesData   = {{ sales_data|safe }};
     window.bestSellers = [
         {% for product in best_sellers %}
-        { name: "{{ product.product__name|escapejs }}", quantity: {{ product.total_quantity }} }{% if not forloop.last %},{% endif %}
+        { name: "{{ product.product__name|escapejs }}", quantity: {{ product.quantity }} }{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 </script>
