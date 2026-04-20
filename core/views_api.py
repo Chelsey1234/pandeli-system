@@ -434,23 +434,26 @@ class DashboardViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def sales_chart(self, request):
-        """Get sales chart data"""
+        """Get sales chart data — all orders regardless of payment status"""
         days = int(request.GET.get('days', 7))
         today = timezone.now().date()
-        
+        start = today - timedelta(days=days - 1)
+
+        # Single query instead of N queries
+        qs = (
+            Order.objects.filter(created_at__date__gte=start)
+            .annotate(day=TruncDay('created_at'))
+            .values('day')
+            .annotate(total=Sum('total'))
+            .order_by('day')
+        )
+        by_date = {row['day'].date(): float(row['total'] or 0) for row in qs}
+
         data = []
-        for i in range(days-1, -1, -1):
+        for i in range(days - 1, -1, -1):
             date = today - timedelta(days=i)
-            total = Order.objects.filter(
-                created_at__date=date,
-                payment_status='paid'
-            ).aggregate(total=Sum('total'))['total'] or 0
-            
-            data.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'total': float(total)
-            })
-        
+            data.append({'date': date.strftime('%Y-%m-%d'), 'total': by_date.get(date, 0)})
+
         return Response(data)
     
     @action(detail=False, methods=['get'])
@@ -461,7 +464,6 @@ class DashboardViewSet(viewsets.ViewSet):
         
         sales_by_category = OrderItem.objects.filter(
             order__created_at__date__gte=start_date,
-            order__payment_status='paid'
         ).values('product__category').annotate(
             total_sales=Sum('subtotal'),
             total_quantity=Sum('quantity')
@@ -471,13 +473,13 @@ class DashboardViewSet(viewsets.ViewSet):
         sales_data = []
         quantity_data = []
         colors = [
-            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-            '#FF9F40', '#FF6384', '#C9CBCF', '#7BC225', '#00A8B5'
+            '#C98A6B', '#7C4A2D', '#a86b4e', '#dba98e', '#f7e4d8',
+            '#FF9F40', '#36A2EB', '#4BC0C0', '#9966FF', '#FFCE56'
         ]
         
         for item in sales_by_category:
             category_name = dict(Product.CATEGORY_CHOICES).get(
-                item['product__category'], 
+                item['product__category'],
                 item['product__category'].title()
             )
             categories.append(category_name)
@@ -495,22 +497,24 @@ class DashboardViewSet(viewsets.ViewSet):
     def top_products(self, request):
         """Get top selling products for bar chart"""
         limit = int(request.GET.get('limit', 10))
-        start_date = timezone.now().date() - timedelta(days=30)
+        metric = request.GET.get('metric', 'sales')
+        days = int(request.GET.get('days', 30))
+        start_date = timezone.now().date() - timedelta(days=days)
         
         top_products = OrderItem.objects.filter(
             order__created_at__date__gte=start_date,
-            order__payment_status='paid'
         ).values('product__name', 'product__id').annotate(
             total_sales=Sum('subtotal'),
             total_quantity=Sum('quantity')
-        ).order_by('-total_sales')[:limit]
+        ).order_by('-total_sales' if metric == 'sales' else '-total_quantity')[:limit]
         
         products = []
         sales_data = []
         quantity_data = []
         
         for item in top_products:
-            products.append(item['product__name'][:20] + ('...' if len(item['product__name']) > 20 else ''))
+            name = item['product__name']
+            products.append(name[:20] + ('...' if len(name) > 20 else ''))
             sales_data.append(float(item['total_sales']))
             quantity_data.append(item['total_quantity'])
         
