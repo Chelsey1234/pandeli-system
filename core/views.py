@@ -169,15 +169,15 @@ def dashboard(request):
         is_available=True
     )[:10]
     
-    # Best selling products — use 'quantity' to match JS (i.quantity)
-    best_sellers = OrderItem.objects.values(
+    # Best selling products — from OrderItem if available, else empty
+    best_sellers = list(OrderItem.objects.values(
         'product__name', 'product__id'
     ).annotate(
         quantity=Sum('quantity'),
         total_sales=Sum('subtotal')
-    ).order_by('-quantity')[:5]
+    ).order_by('-quantity')[:5])
 
-    # Sales by category — for server-side rendering
+    # Sales by category — from OrderItem if available
     start_30 = today - timedelta(days=30)
     sales_by_category = list(
         OrderItem.objects.filter(
@@ -194,7 +194,7 @@ def dashboard(request):
         category_labels.append(cat)
         category_sales.append(float(item['total_sales']))
 
-    # Top products — for server-side rendering
+    # Top products — from OrderItem if available
     top_products_qs = list(
         OrderItem.objects.filter(
             order__created_at__date__gte=start_30

@@ -202,94 +202,88 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
     
     def create(self, request, *args, **kwargs):
-        """Override create to handle order items"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Start a transaction to ensure data consistency
+        """Override create to handle order items — supports multiple item formats"""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Order create request data keys: {list(request.data.keys())}")
+
         with transaction.atomic():
-            # Create the order - pass order_type and notes from request
-            order_type = request.data.get('order_type', 'walk_in')
+            order_type = request.data.get('order_type', 'online')
             notes = request.data.get('notes', '')
-            order = serializer.save(
-                created_by=request.user,
+
+            # Create base order
+            order = Order.objects.create(
                 order_type=order_type,
-                notes=notes or ''
+                notes=notes or '',
+                created_by=request.user,
+                status='pending',
+                payment_status=request.data.get('payment_status', 'pending'),
+                payment_method=request.data.get('payment_method', 'cash'),
             )
-            
-            # Get items from request
+
+            # Handle customer — may be UUID string from app
+            customer_id = request.data.get('customer') or request.data.get('customer_id')
+            if customer_id:
+                try:
+                    order.customer_id = int(customer_id)
+                    order.save(update_fields=['customer_id'])
+                except (ValueError, TypeError):
+                    pass  # UUID or invalid — leave customer as null
+
+            # Get items — support multiple formats
             items_data = request.data.get('items', [])
-            
             if not items_data:
-                return Response(
-                    {'error': 'No items provided'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Use Decimal for calculations
+                order.delete()
+                return Response({'error': 'No items provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+            logger.info(f"Items data: {items_data}")
+
             subtotal = Decimal('0.00')
             total_quantity = 0
-            
-            # Create order items
+
             for item_data in items_data:
                 try:
-                    product = Product.objects.get(id=item_data['product_id'])
-                    quantity = int(item_data['quantity'])
-                    
-                    # Check stock
-                    if product.stock < quantity:
-                        return Response(
-                            {'error': f'Insufficient stock for {product.name}'},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    
-                    # Calculate item total - convert to Decimal
-                    item_total = product.price * quantity
+                    # Support both product_id and product formats
+                    pid = item_data.get('product_id') or item_data.get('product')
+                    product = Product.objects.get(id=int(pid))
+                    quantity = int(item_data.get('quantity', 1))
+                    price = Decimal(str(item_data.get('price', product.price)))
+                    item_total = price * quantity
                     subtotal += item_total
                     total_quantity += quantity
-                    
-                    # Create order item
+
                     OrderItem.objects.create(
                         order=order,
                         product=product,
                         quantity=quantity,
-                        price=product.price,
+                        price=price,
                         subtotal=item_total
                     )
-                    
-                    # Update stock
-                    product.stock -= quantity
-                    product.save()
-                    
-                except Product.DoesNotExist:
-                    return Response(
-                        {'error': f'Product with id {item_data["product_id"]} not found'},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                except Exception as e:
-                    return Response(
-                        {'error': str(e)},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-            
-            # Auto-apply 10% discount for online orders with 10+ total items
-            tax = Decimal('0')
-            if order_type == 'online' and total_quantity >= 10:
-                discount = (subtotal * Decimal('0.10')).quantize(Decimal('0.01'))
-                order.notes = (notes + ' [Auto 10% bulk discount applied]').strip()
-            else:
-                discount = Decimal(str(order.discount or 0))
 
+                    # Update stock
+                    if product.stock >= quantity:
+                        product.stock -= quantity
+                        product.save(update_fields=['stock', 'is_available'])
+
+                except Product.DoesNotExist:
+                    order.delete()
+                    return Response({'error': f'Product {pid} not found'}, status=status.HTTP_400_BAD_REQUEST)
+                except Exception as e:
+                    logger.error(f"Error creating order item: {e}")
+                    order.delete()
+                    return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Calculate totals
+            discount = Decimal(str(request.data.get('discount', 0) or 0))
+            tax = Decimal('0')
             total = subtotal - discount
 
-            # Update order with calculated values
             order.subtotal = subtotal
             order.tax = tax
             order.discount = discount
             order.total = total
             order.save()
-        
-        # Return the updated order
+
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
