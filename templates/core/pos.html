@@ -45,7 +45,10 @@
                                  data-product-stock="{{ product.stock }}">
                                 <div class="card-body text-center p-2">
                                     {% if product.image %}
-                                        <img src="{{ product.image.url }}" class="img-fluid mb-2" style="height: 60px; object-fit: contain;" alt="{{ product.name }}">
+                                        <img src="{{ product.image.url }}" class="img-fluid mb-2" 
+                                             style="height: 60px; object-fit: contain;" alt="{{ product.name }}"
+                                             onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                                        <i class="fas fa-box fa-3x mb-2 text-secondary" style="display:none;"></i>
                                     {% else %}
                                         <i class="fas fa-box fa-3x mb-2 text-secondary"></i>
                                     {% endif %}
