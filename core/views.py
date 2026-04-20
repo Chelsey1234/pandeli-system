@@ -1106,61 +1106,61 @@ def supplier_list(request):
     }
     return render(request, 'core/supplier_list.html', context)
 
-# ========== BANNER VIEWS ==========
+# ========== APP FEATURES VIEWS ==========
 
 @login_required
-def banner_list(request):
-    banners = Banner.objects.all()
-    return render(request, 'core/banner_list.html', {'banners': banners})
+def app_feature_list(request):
+    features = AppFeature.objects.all()
+    return render(request, 'core/app_feature_list.html', {'features': features})
 
 @login_required
 @require_POST
-def banner_add(request):
+def app_feature_add(request):
     title = request.POST.get('title', '')
     subtitle = request.POST.get('subtitle', '')
     order = int(request.POST.get('order', 0))
     image = request.FILES.get('image')
     if not image:
         messages.error(request, 'Image is required.')
-        return redirect('banner_list')
-    Banner.objects.create(title=title, subtitle=subtitle, image=image, order=order)
-    messages.success(request, 'Banner added successfully.')
-    return redirect('banner_list')
+        return redirect('app_feature_list')
+    AppFeature.objects.create(title=title, subtitle=subtitle, image=image, order=order)
+    messages.success(request, 'App feature added successfully.')
+    return redirect('app_feature_list')
 
 @login_required
 @require_POST
-def banner_toggle(request, pk):
-    banner = get_object_or_404(Banner, pk=pk)
-    banner.is_active = not banner.is_active
-    banner.save(update_fields=['is_active'])
-    return JsonResponse({'is_active': banner.is_active})
+def app_feature_toggle(request, pk):
+    feature = get_object_or_404(AppFeature, pk=pk)
+    feature.is_active = not feature.is_active
+    feature.save(update_fields=['is_active'])
+    return JsonResponse({'is_active': feature.is_active})
 
 @login_required
 @require_POST
-def banner_delete(request, pk):
-    banner = get_object_or_404(Banner, pk=pk)
-    banner.image.delete(save=False)
-    banner.delete()
-    messages.success(request, 'Banner deleted.')
-    return redirect('banner_list')
+def app_feature_delete(request, pk):
+    feature = get_object_or_404(AppFeature, pk=pk)
+    feature.image.delete(save=False)
+    feature.delete()
+    messages.success(request, 'App feature deleted.')
+    return redirect('app_feature_list')
 
-def banners_api(request):
-    """Public API endpoint for mobile app to fetch active banners."""
-    banners = Banner.objects.filter(is_active=True).order_by('order', '-created_at')
+def app_features_api(request):
+    """Public API endpoint for mobile app to fetch active features/banners."""
+    features = AppFeature.objects.filter(is_active=True).order_by('order', '-created_at')
     data = []
-    for b in banners:
+    for f in features:
         image_url = None
-        if b.image:
+        if f.image:
             try:
-                image_url = request.build_absolute_uri(b.image.url)
+                image_url = request.build_absolute_uri(f.image.url)
             except Exception:
-                image_url = b.image.url
+                image_url = f.image.url
         data.append({
-            'id': b.id,
-            'title': b.title,
-            'subtitle': b.subtitle,
+            'id': f.id,
+            'title': f.title,
+            'subtitle': f.subtitle,
             'image_url': image_url,
-            'order': b.order,
+            'order': f.order,
         })
     return JsonResponse(data, safe=False)
 

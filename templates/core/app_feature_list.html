@@ -1,0 +1,127 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}App Features{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{% url 'product_list' %}" class="btn btn-outline-secondary btn-sm me-2">
+                <i class="fas fa-arrow-left"></i> Back to Products
+            </a>
+            <h2 class="d-inline"><i class="fas fa-images"></i> App Features</h2>
+        </div>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addFeatureModal">
+            <i class="fas fa-plus"></i> Add Feature Image
+        </button>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="fas fa-mobile-alt"></i>
+        These images appear in the <strong>app home screen carousel/banner</strong>.
+        Upload promo images here — active ones show in the app automatically.
+        <br><small class="text-muted">API endpoint: <code>GET /api/app-features/</code></small>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        {% for feature in features %}
+        <div class="col-md-4 col-lg-3 mb-4">
+            <div class="card h-100 {% if not feature.is_active %}border-secondary{% else %}border-success border-2{% endif %}">
+                <div class="position-relative">
+                    <img src="{{ feature.image.url }}" class="card-img-top"
+                         style="height: 180px; object-fit: cover;">
+                    <span class="position-absolute top-0 end-0 m-2 badge {% if feature.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                        {% if feature.is_active %}✅ Active{% else %}Hidden{% endif %}
+                    </span>
+                    <span class="position-absolute top-0 start-0 m-2 badge bg-dark opacity-75">
+                        #{{ feature.order }}
+                    </span>
+                </div>
+                <div class="card-body pb-2">
+                    <h6 class="card-title fw-bold mb-1">{{ feature.title|default:"(No title)" }}</h6>
+                    <p class="card-text text-muted small mb-2">{{ feature.subtitle|default:"" }}</p>
+                </div>
+                <div class="card-footer bg-transparent d-flex gap-2">
+                    <form method="post" action="{% url 'app_feature_toggle' feature.pk %}" class="flex-fill">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm w-100 {% if feature.is_active %}btn-warning{% else %}btn-success{% endif %}">
+                            {% if feature.is_active %}<i class="fas fa-eye-slash"></i> Hide{% else %}<i class="fas fa-eye"></i> Show{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'app_feature_delete' feature.pk %}"
+                          onsubmit="return confirm('Delete this feature image?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-images fa-4x text-muted mb-3 d-block"></i>
+                    <h5 class="text-muted">No app features yet</h5>
+                    <p class="text-muted">Click "Add Feature Image" to upload your first promo banner.</p>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addFeatureModal">
+                        <i class="fas fa-plus"></i> Add Feature Image
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add Feature Modal -->
+<div class="modal fade" id="addFeatureModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Feature Image</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'app_feature_add' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Image <span class="text-danger">*</span></label>
+                        <input type="file" name="image" class="form-control" accept="image/*" required>
+                        <small class="text-muted">Recommended: 1200×400px or wider. JPG/PNG.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Title <small class="text-muted">(optional)</small></label>
+                        <input type="text" name="title" class="form-control" placeholder="e.g. Freshly Baked Daily">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Subtitle <small class="text-muted">(optional)</small></label>
+                        <input type="text" name="subtitle" class="form-control" placeholder="e.g. Taste the warmth in every bite.">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Display Order</label>
+                        <input type="number" name="order" class="form-control" value="0" min="0">
+                        <small class="text-muted">Lower number = shown first in carousel.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

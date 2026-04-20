@@ -8,14 +8,13 @@
             <li><a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
             <li><a href="{% url 'order_list' %}" class="{% if request.resolver_match.url_name == 'order_list' or request.resolver_match.url_name == 'order_detail' %}active{% endif %}"><i class="fas fa-shopping-cart"></i> Orders</a></li>
             <li><a href="{% url 'pos' %}" class="{% if request.resolver_match.url_name == 'pos' or request.resolver_match.url_name == 'pos_receipt' %}active{% endif %}"><i class="fas fa-cash-register"></i> POS</a></li>
-            <li><a href="{% url 'product_list' %}" class="{% if request.resolver_match.url_name == 'product_list' %}active{% endif %}"><i class="fas fa-box"></i> Products</a></li>
+            <li><a href="{% url 'product_list' %}" class="{% if request.resolver_match.url_name == 'product_list' or request.resolver_match.url_name == 'app_feature_list' %}active{% endif %}"><i class="fas fa-box"></i> Products</a></li>
             <li><a href="{% url 'inventory_status' %}" class="{% if request.resolver_match.url_name == 'inventory_status' %}active{% endif %}"><i class="fas fa-warehouse"></i> Inventory</a></li>
             <li><a href="{% url 'supplier_list' %}" class="{% if request.resolver_match.url_name == 'supplier_list' %}active{% endif %}"><i class="fas fa-truck"></i> Suppliers</a></li>
             <li><a href="{% url 'sales_report' %}" class="{% if request.resolver_match.url_name == 'sales_report' %}active{% endif %}"><i class="fas fa-chart-bar"></i> Sales Report</a></li>
             <li><a href="{% url 'production_cost_analytics' %}" class="{% if request.resolver_match.url_name == 'production_cost_analytics' %}active{% endif %}"><i class="fas fa-chart-line"></i> Cost Analytics</a></li>
             <li><a href="{% url 'forecast' %}" class="{% if request.resolver_match.url_name == 'forecast' %}active{% endif %}"><i class="fas fa-chart-area"></i> Forecast</a></li>
             <li><a href="{% url 'import_data' %}" class="{% if request.resolver_match.url_name == 'import_data' or request.resolver_match.url_name == 'import_history' %}active{% endif %}"><i class="fas fa-file-import"></i> Import</a></li>
-            <li><a href="{% url 'banner_list' %}" class="{% if request.resolver_match.url_name == 'banner_list' %}active{% endif %}"><i class="fas fa-images"></i> Banners</a></li>
             <li><a href="{% url 'messages' %}"><i class="fas fa-bell"></i> Messages</a></li>
         </ul>
     </div>

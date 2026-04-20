@@ -40,6 +40,7 @@ class LoginRequiredMiddleware:
             '/privacy-policy/',
             '/privacy_policy.php',
             '/api/banners/',
+            '/api/app-features/',
         ]
         
         # Add any additional public paths

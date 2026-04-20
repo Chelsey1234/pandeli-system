@@ -428,10 +428,10 @@ class ImportHistory(models.Model):
         return f"{self.import_type} - {self.created_at}"
 
 
-class Banner(models.Model):
-    title = models.CharField(max_length=200, blank=True, help_text="Optional title shown on banner")
+class AppFeature(models.Model):
+    title = models.CharField(max_length=200, blank=True, help_text="Optional title shown on feature")
     subtitle = models.CharField(max_length=300, blank=True, help_text="Optional subtitle/tagline")
-    image = models.ImageField(upload_to='banners/', help_text="Promo banner image")
+    image = models.ImageField(upload_to='app_features/', help_text="Promo feature image")
     is_active = models.BooleanField(default=True)
     order = models.PositiveIntegerField(default=0, help_text="Display order (lower = first)")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -441,4 +441,4 @@ class Banner(models.Model):
         ordering = ['order', '-created_at']
 
     def __str__(self):
-        return self.title or f"Banner #{self.pk}"
+        return self.title or f"App Feature #{self.pk}"
