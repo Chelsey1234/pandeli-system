@@ -154,6 +154,8 @@ class Order(models.Model):
     ORDER_TYPE = [
         ('online', 'Online'),
         ('walk_in', 'Walk-in'),
+        ('pickup', 'Pickup'),
+        ('delivery', 'Delivery'),
     ]
     
     order_number = models.CharField(max_length=20, unique=True)
