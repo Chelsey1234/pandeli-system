@@ -39,9 +39,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         is_best_seller = self.request.query_params.get('is_best_seller')
         is_new_arrival = self.request.query_params.get('is_new_arrival')
         if is_best_seller in ('true', '1', 'True'):
-            return qs.filter(is_archived=False, is_available=True, is_best_seller=True)
+            return qs.filter(is_archived=False, is_best_seller=True)
         if is_new_arrival in ('true', '1', 'True'):
-            return qs.filter(is_archived=False, is_available=True, is_new_arrival=True)
+            return qs.filter(is_archived=False, is_new_arrival=True)
         
         return qs.filter(is_archived=False)
 
@@ -196,7 +196,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         products = Product.objects.filter(
             is_new_arrival=True,
             is_archived=False,
-            is_available=True
         ).order_by('-created_at')
         serializer = self.get_serializer(products, many=True, context={'request': request})
         return Response(serializer.data)
@@ -207,7 +206,6 @@ class ProductViewSet(viewsets.ModelViewSet):
         products = Product.objects.filter(
             is_best_seller=True,
             is_archived=False,
-            is_available=True
         ).order_by('name')
         serializer = self.get_serializer(products, many=True, context={'request': request})
         return Response(serializer.data)
