@@ -1234,7 +1234,10 @@ def privacy_policy(request):
 @login_required
 def app_feature_list(request):
     features = AppFeature.objects.all()
-    bundles = Bundle.objects.all()
+    try:
+        bundles = Bundle.objects.all()
+    except Exception:
+        bundles = []
     return render(request, 'core/app_feature_list.html', {'features': features, 'bundles': bundles})
 
 @login_required
@@ -1344,7 +1347,10 @@ def bundle_delete(request, pk):
 
 def bundles_api(request):
     """Public API — returns active bundles with filtered products by category."""
-    bundles = Bundle.objects.filter(is_active=True).order_by('order', '-created_at')
+    try:
+        bundles = Bundle.objects.filter(is_active=True).order_by('order', '-created_at')
+    except Exception:
+        return JsonResponse([], safe=False)
     data = []
     for b in bundles:
         # Filter products by category if specified, else all products
