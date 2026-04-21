@@ -45,6 +45,9 @@
 
     {% block extra_head %}{% endblock %}
 
+    <!-- Chart.js — available on all pages -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+
     {% load static %}
     <link rel="stylesheet" href="{% static 'core/css/style.css' %}">
     <!-- Minimal Bootstrap modal CSS (no Bootstrap layout/grid, just modal mechanics) -->

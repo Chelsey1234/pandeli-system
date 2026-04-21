@@ -1,29 +1,25 @@
 // ========== DASHBOARD CHARTS MANAGER ==========
-// Palette: RdYlBu diverging (colorStart 0.1 → colorEnd 1.0)
+// Uses d3.interpolateRdYlBu: colorStart=0.1, colorEnd=1.0, useEndAsStart=false
 
-window.RDYLBU = [
-    '#d73027', // red
-    '#f46d43', // orange-red
-    '#fdae61', // orange
-    '#fee090', // yellow-orange
-    '#ffffbf', // pale yellow
-    '#e0f3f8', // pale blue
-    '#abd9e9', // light blue
-    '#74add1', // medium blue
-    '#4575b4', // blue
-    '#313695'  // dark blue
-];
-
-// Pick N evenly-spaced colors from the palette
+// Generate N colors from RdYlBu scale
 window.rdylbuColors = function(n) {
-    var p = window.RDYLBU;
-    if (n <= 1) return [p[0]];
-    var result = [];
-    for (var i = 0; i < n; i++) {
-        var idx = Math.round(i * (p.length - 1) / (n - 1));
-        result.push(p[idx]);
+    if (typeof d3 === 'undefined') {
+        // Fallback palette if d3 not loaded
+        return ['#d73027','#f46d43','#fdae61','#fee090','#ffffbf','#e0f3f8','#abd9e9','#74add1','#4575b4','#313695'].slice(0, n);
     }
-    return result;
+    var colors = [];
+    for (var i = 0; i < n; i++) {
+        var t = n === 1 ? 0.1 : 0.1 + (i / (n - 1)) * 0.9;
+        colors.push(d3.interpolateRdYlBu(t));
+    }
+    return colors;
+};
+
+// Convert rgb() to rgba() with alpha
+window.rdylbuAlpha = function(n, alpha) {
+    return window.rdylbuColors(n).map(function(c) {
+        return c.replace('rgb(', 'rgba(').replace(')', ',' + (alpha || 0.8) + ')');
+    });
 };
 
 const DashboardCharts = {

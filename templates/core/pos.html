@@ -57,7 +57,9 @@
                             <span class="absolute top-1 right-1 px-1.5 py-0.5 text-xs font-bold rounded-full bg-yellow-400 text-white">Low</span>
                             {% endif %}
                             {% if product.image %}
-                                <img src="{{ product.image.url }}" class="h-14 w-full object-contain mb-2" alt="{{ product.name }}">
+                                <img src="{{ product.image.url }}" class="h-14 w-full object-contain mb-2" alt="{{ product.name }}"
+                                     onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                                <i class="fas fa-box text-3xl text-gray-300 mb-2 block" style="display:none;"></i>
                             {% else %}
                                 <i class="fas fa-box text-3xl text-gray-300 mb-2 block"></i>
                             {% endif %}

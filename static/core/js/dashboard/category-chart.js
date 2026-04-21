@@ -1,17 +1,16 @@
-// ========== CATEGORY CHART — RdYlBu staggered bars ==========
+// ========== SALES BY CATEGORY — Radar with RdYlBu ==========
 const CategoryChartManager = {
     chart: null,
     currentPeriod: 30,
-    currentType: 'sales',
 
     init: function() {
         if (!document.getElementById('categoryBarChart')) return;
-        // Use server-side data if available, otherwise fetch via AJAX
-        if (window.categoryData && window.categoryData.labels && window.categoryData.labels.length > 0) {
-            this.createChart(window.categoryData);
-        } else {
-            this.fetchData();
-        }
+        this.renderFromServerData();
+    },
+
+    renderFromServerData: function() {
+        var data = window.categoryData || { labels: [], sales: [] };
+        this.createChart(data);
     },
 
     fetchData: function() {
@@ -19,7 +18,7 @@ const CategoryChartManager = {
         fetch('/api/dashboard/sales_by_category/?days=' + this.currentPeriod, {credentials: 'same-origin'})
             .then(function(r) { return r.json(); })
             .then(function(data) { self.createChart(data); })
-            .catch(function() { self.showNoData(); });
+            .catch(function() { self.renderFromServerData(); });
     },
 
     createChart: function(data) {
@@ -27,60 +26,50 @@ const CategoryChartManager = {
         if (!canvas) return;
         if (this.chart) { this.chart.destroy(); this.chart = null; }
 
-        var labels = (data.labels && data.labels.length) ? data.labels : ['No data'];
-        var values = (data.sales  && data.sales.length)  ? data.sales  : [0];
-        var colors = window.rdylbuColors ? window.rdylbuColors(labels.length) : ['#d73027','#fdae61','#abd9e9','#4575b4'];
+        var labels = (data.labels && data.labels.length) ? data.labels : null;
+        var values = (data.sales  && data.sales.length)  ? data.sales  : null;
+
+        if (!labels || !values) { this.showNoData(); return; }
+
+        var colors = window.rdylbuColors(labels.length);
+        var colorsAlpha = window.rdylbuAlpha(labels.length, 0.3);
 
         this.chart = new Chart(canvas.getContext('2d'), {
-            type: 'bar',
+            type: 'radar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: this.currentType === 'sales' ? 'Sales (\u20B1)' : 'Quantity',
+                    label: 'Sales (\u20B1)',
                     data: values,
-                    backgroundColor: colors,
-                    borderRadius: { topLeft: 6, topRight: 6 },
-                    borderSkipped: false
+                    backgroundColor: 'rgba(215,48,39,0.15)',
+                    borderColor: colors[0] || '#d73027',
+                    borderWidth: 2,
+                    pointBackgroundColor: colors,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: {
-                    y: {
-                        easing: 'easeOutBounce',
-                        duration: function(ctx) { return 400 + ctx.dataIndex * 80; },
-                        from: function(ctx) { return ctx.chart.scales.y.getPixelForValue(0); }
-                    },
-                    x: { duration: 0 }
-                },
+                animation: { duration: 800, easing: 'easeInOutQuart' },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#313695',
-                        titleColor: '#fee090',
-                        bodyColor: '#fff',
-                        borderColor: '#74add1',
-                        borderWidth: 1,
-                        padding: 12,
-                        cornerRadius: 10,
-                        displayColors: false,
-                        callbacks: {
-                            label: function(ctx) { return ' \u20B1' + ctx.raw.toFixed(2); }
-                        }
+                        backgroundColor: '#3d2010', titleColor: '#f7e4d8', bodyColor: '#fff',
+                        borderColor: '#C98A6B', borderWidth: 1, padding: 12, cornerRadius: 10,
+                        callbacks: { label: function(ctx) { return ' \u20B1' + ctx.raw.toFixed(2); } }
                     }
                 },
                 scales: {
-                    y: {
+                    r: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(69,117,180,0.08)', drawBorder: false },
-                        border: { dash: [4,4], display: false },
-                        ticks: { callback: function(v) { return '\u20B1' + v; }, color: '#74add1', font: { size: 11 } }
-                    },
-                    x: {
-                        grid: { display: false },
-                        border: { display: false },
-                        ticks: { color: '#74add1', font: { size: 11 } }
+                        ticks: { color: '#C98A6B', backdropColor: 'transparent', font: { size: 10 }, callback: function(v) { return '\u20B1' + v; } },
+                        grid: { color: 'rgba(215,48,39,0.15)' },
+                        angleLines: { color: 'rgba(215,48,39,0.2)' },
+                        pointLabels: { color: '#7C4A2D', font: { size: 11, weight: '600' } }
                     }
                 }
             }
@@ -88,8 +77,7 @@ const CategoryChartManager = {
     },
 
     changePeriod: function(days) { this.currentPeriod = days; this.fetchData(); },
-    toggleType:   function()     { this.currentType = this.currentType === 'sales' ? 'quantity' : 'sales'; this.fetchData(); },
-    showNoData:   function()     {
+    showNoData: function() {
         var c = document.getElementById('categoryBarChart');
         var n = document.getElementById('categoryNoData');
         if (c) c.style.display = 'none';

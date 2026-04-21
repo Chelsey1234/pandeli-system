@@ -168,57 +168,67 @@ def check_low_stock_alerts():
 
 def calculate_profit_analysis(start_date=None, end_date=None):
     """
-    Calculate profit analysis for a given period
+    Calculate profit analysis for a given period.
+    Uses OrderItem if available, falls back to product_name stored in Order.
     """
     if not end_date:
         end_date = timezone.now().date()
     if not start_date:
         start_date = end_date - timedelta(days=30)
-    
-    # Include all orders in the selected period (regardless of payment status)
+
     orders = Order.objects.filter(
         created_at__date__gte=start_date,
         created_at__date__lte=end_date,
     )
-    
-    total_revenue = orders.aggregate(total=Sum('total'))['total'] or 0
-    
-    # Calculate cost of goods sold
+
+    total_revenue = float(orders.aggregate(total=Sum('total'))['total'] or 0)
     total_cost = 0
     product_costs = {}
-    
+
+    # Try OrderItem first
+    has_items = False
     for order in orders:
-        for item in order.items.all():
-            cost = item.product.cost * item.quantity
-            total_cost += cost
-            
-            if item.product.name not in product_costs:
-                product_costs[item.product.name] = {
-                    'revenue': 0,
-                    'cost': 0,
-                    'quantity': 0
-                }
-            
-            product_costs[item.product.name]['revenue'] += float(item.subtotal)
-            product_costs[item.product.name]['cost'] += float(cost)
-            product_costs[item.product.name]['quantity'] += item.quantity
-    
+        items = list(order.items.all())
+        if items:
+            has_items = True
+            for item in items:
+                cost = float(item.product.cost) * item.quantity
+                total_cost += cost
+                name = item.product.name
+                if name not in product_costs:
+                    product_costs[name] = {'revenue': 0, 'cost': 0, 'quantity': 0}
+                product_costs[name]['revenue'] += float(item.subtotal)
+                product_costs[name]['cost'] += cost
+                product_costs[name]['quantity'] += item.quantity
+
+    # Fallback: use product_name stored directly in order
+    if not has_items:
+        for order in orders:
+            if order.product_name:
+                name = order.product_name
+                revenue = float(order.total)
+                # Try to get cost from Product table
+                product = Product.objects.filter(name__iexact=name).first()
+                cost = float(product.cost) if product else 0
+                if name not in product_costs:
+                    product_costs[name] = {'revenue': 0, 'cost': 0, 'quantity': 0}
+                product_costs[name]['revenue'] += revenue
+                product_costs[name]['cost'] += cost
+                product_costs[name]['quantity'] += 1
+                total_cost += cost
+
     gross_profit = total_revenue - total_cost
     profit_margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
-    
-    # Calculate profit by product
-    for product_name, data in product_costs.items():
+
+    for name, data in product_costs.items():
         data['profit'] = data['revenue'] - data['cost']
         data['margin'] = (data['profit'] / data['revenue'] * 100) if data['revenue'] > 0 else 0
-    
+
     return {
-        'period': {
-            'start': start_date,
-            'end': end_date
-        },
+        'period': {'start': start_date, 'end': end_date},
         'total_revenue': total_revenue,
         'total_cost': total_cost,
         'gross_profit': gross_profit,
         'profit_margin': profit_margin,
-        'products': product_costs
+        'products': product_costs,
     }

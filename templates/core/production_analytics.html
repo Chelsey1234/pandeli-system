@@ -11,7 +11,6 @@
     </a>
 </div>
 
-<!-- Date Filter -->
 <div class="filter-bar">
     <form method="get" class="flex flex-wrap gap-3 items-end w-full">
         <div class="flex-1 min-w-[150px]">
@@ -26,66 +25,41 @@
     </form>
 </div>
 
-<!-- Summary Cards -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-    <div class="card card-body" style="animation:fadeUp 0.4s ease 0.05s both;">
+    <div class="card card-body">
         <p class="label-text mb-1">Total Revenue</p>
         <p class="text-xl font-bold" style="color:#3d2010;">&#8369; {{ analysis.total_revenue|floatformat:2 }}</p>
     </div>
-    <div class="card card-body" style="animation:fadeUp 0.4s ease 0.1s both;">
+    <div class="card card-body">
         <p class="label-text mb-1">Total Cost</p>
         <p class="text-xl font-bold" style="color:#c53030;">&#8369; {{ analysis.total_cost|floatformat:2 }}</p>
     </div>
-    <div class="card card-body" style="animation:fadeUp 0.4s ease 0.15s both;">
+    <div class="card card-body">
         <p class="label-text mb-1">Gross Profit</p>
         <p class="text-xl font-bold" style="color:#276749;">&#8369; {{ analysis.gross_profit|floatformat:2 }}</p>
     </div>
-    <div class="card card-body" style="animation:fadeUp 0.4s ease 0.2s both;">
+    <div class="card card-body">
         <p class="label-text mb-1">Profit Margin</p>
         <p class="text-xl font-bold" style="color:#7C4A2D;">{{ analysis.profit_margin|floatformat:1 }}%</p>
     </div>
 </div>
 
-<!-- Charts Row -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-
-    <!-- Revenue vs Cost vs Profit grouped bar -->
-    <div class="card overflow-hidden" style="animation:fadeUp 0.4s ease 0.25s both;">
+    <div class="card overflow-hidden">
         <div class="card-header">
-            <span class="card-title flex items-center gap-2">
-                <i class="fas fa-chart-bar" style="color:#C98A6B;"></i> Revenue vs Cost vs Profit
-            </span>
-            <div class="flex gap-2 text-xs muted-text">
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm" style="background:#C98A6B;"></span>Revenue</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm" style="background:#e53e3e;"></span>Cost</span>
-                <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm" style="background:#38a169;"></span>Profit</span>
-            </div>
+            <span class="card-title"><i class="fas fa-chart-pie mr-1" style="color:#C98A6B;"></i> Revenue vs Cost vs Profit</span>
         </div>
-        <div class="card-body">
-            <div style="position:relative;min-height:280px;">
-                <canvas id="revCostChart"></canvas>
-            </div>
-        </div>
+        <div class="card-body"><div style="position:relative;min-height:280px;"><canvas id="revCostChart"></canvas></div></div>
     </div>
-
-    <!-- Profit margin % line chart per product -->
-    <div class="card overflow-hidden" style="animation:fadeUp 0.4s ease 0.3s both;">
+    <div class="card overflow-hidden">
         <div class="card-header">
-            <span class="card-title flex items-center gap-2">
-                <i class="fas fa-percent" style="color:#C98A6B;"></i> Profit Margin by Product
-            </span>
+            <span class="card-title"><i class="fas fa-percent mr-1" style="color:#C98A6B;"></i> Profit Margin by Product</span>
         </div>
-        <div class="card-body">
-            <div style="position:relative;min-height:280px;">
-                <canvas id="marginChart"></canvas>
-            </div>
-        </div>
+        <div class="card-body"><div style="position:relative;min-height:280px;"><canvas id="marginChart"></canvas></div></div>
     </div>
-
 </div>
 
-<!-- Product Margins Table -->
-<div class="card overflow-hidden" style="animation:fadeUp 0.4s ease 0.35s both;">
+<div class="card overflow-hidden">
     <div class="card-header"><span class="card-title">Profit by Product</span></div>
     <div class="overflow-x-auto">
         <table class="data-table">
@@ -94,7 +68,7 @@
             </thead>
             <tbody>
                 {% for p in product_margins %}
-                <tr style="animation:fadeUp 0.3s ease {{ forloop.counter0|floatformat:0 }}00ms both;">
+                <tr>
                     <td class="font-medium">{{ p.name }}</td>
                     <td>{{ p.quantity }}</td>
                     <td class="font-semibold">&#8369; {{ p.revenue|floatformat:2 }}</td>
@@ -103,12 +77,9 @@
                     <td>
                         <div class="flex items-center gap-2">
                             <div class="flex-1 rounded-full overflow-hidden" style="height:6px;background:#ecddd5;max-width:80px;">
-                                <div class="h-full rounded-full transition-all"
-                                     style="width:{{ p.margin|floatformat:0 }}%;background:{% if p.margin >= 30 %}#38a169{% elif p.margin >= 15 %}#d69e2e{% else %}#e53e3e{% endif %};"></div>
+                                <div class="h-full rounded-full" style="width:{{ p.margin|floatformat:0 }}%;background:{% if p.margin >= 30 %}#38a169{% elif p.margin >= 15 %}#d69e2e{% else %}#e53e3e{% endif %};"></div>
                             </div>
-                            <span class="pill {% if p.margin >= 30 %}pill-green{% elif p.margin >= 15 %}pill-yellow{% else %}pill-red{% endif %}">
-                                {{ p.margin|floatformat:1 }}%
-                            </span>
+                            <span class="pill {% if p.margin >= 30 %}pill-green{% elif p.margin >= 15 %}pill-yellow{% else %}pill-red{% endif %}">{{ p.margin|floatformat:1 }}%</span>
                         </div>
                     </td>
                 </tr>
@@ -119,192 +90,84 @@
         </table>
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-color@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-interpolate@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-scale-chromatic@3"></script>
 <script>
-// ── Data from Django ──────────────────────────────────────
-var productNames   = [{% for p in product_margins %}"{{ p.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
-var productRevenue = [{% for p in product_margins %}{{ p.revenue|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
-var productCost    = [{% for p in product_margins %}{{ p.cost|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
-var productProfit  = [{% for p in product_margins %}{{ p.profit|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
-var productMargins = [{% for p in product_margins %}{{ p.margin|floatformat:1 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+document.addEventListener('DOMContentLoaded', function() {
+    var names   = [{% for p in product_margins %}"{{ p.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    var revenue = [{% for p in product_margins %}{{ p.revenue|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    var cost    = [{% for p in product_margins %}{{ p.cost|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    var profit  = [{% for p in product_margins %}{{ p.profit|floatformat:2 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    var margins = [{% for p in product_margins %}{{ p.margin|floatformat:1 }}{% if not forloop.last %},{% endif %}{% endfor %}];
 
-// ── Shared tooltip style ──────────────────────────────────
-var tooltipDefaults = {
-    backgroundColor: '#313695',
-    titleColor: '#fee090',
-    bodyColor: '#fff',
-    borderColor: '#74add1',
-    borderWidth: 1,
-    padding: 12,
-    cornerRadius: 10
-};
-
-// ── 1. Revenue vs Cost vs Profit — grouped bar with stagger ──
-(function() {
-    var canvas = document.getElementById('revCostChart');
-    if (!canvas || !productNames.length) return;
-
-    new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: productNames,
-            datasets: [
-                {
-                    label: 'Revenue',
-                    data: productRevenue,
-                    backgroundColor: '#d73027',
-                    borderRadius: { topLeft:5, topRight:5 },
-                    borderSkipped: false
-                },
-                {
-                    label: 'Cost',
-                    data: productCost,
-                    backgroundColor: '#fdae61',
-                    borderRadius: { topLeft:5, topRight:5 },
-                    borderSkipped: false
-                },
-                {
-                    label: 'Profit',
-                    data: productProfit,
-                    backgroundColor: '#4575b4',
-                    borderRadius: { topLeft:5, topRight:5 },
-                    borderSkipped: false
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            // Sequential dataset animation — each group draws after the previous
-            animation: {
-                y: {
-                    easing: 'easeOutQuart',
-                    duration: function(ctx) { return 400 + ctx.datasetIndex * 200 + ctx.dataIndex * 60; },
-                    from: function(ctx) { return ctx.chart.scales.y.getPixelForValue(0); }
-                },
-                x: { duration: 0 }
-            },
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },
-                tooltip: Object.assign({}, tooltipDefaults, {
-                    callbacks: {
-                        label: function(ctx) {
-                            return ' ' + ctx.dataset.label + ': \u20B1' + ctx.raw.toFixed(2);
-                        }
-                    }
-                })
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(69,117,180,0.08)', drawBorder: false },
-                    border: { dash: [4,4], display: false },
-                    ticks: { callback: function(v) { return '\u20B1' + v; }, color: '#74add1', font: { size: 11 } }
-                },
-                x: {
-                    grid: { display: false },
-                    border: { display: false },
-                    ticks: { color: '#313695', font: { size: 11, weight: '500' } }
-                }
-            }
+    function rdylbu(n) {
+        var c = [];
+        for (var i = 0; i < n; i++) {
+            var t = n === 1 ? 0.1 : 0.1 + (i / (n - 1)) * 0.9;
+            c.push(typeof d3 !== 'undefined' ? d3.interpolateRdYlBu(t) : '#C98A6B');
         }
-    });
-})();
+        return c;
+    }
+    function toRgba(c, a) { return c.replace('rgb(','rgba(').replace(')',','+(a||0.85)+')'); }
 
-// ── 2. Profit Margin % — horizontal bar with value-intensity color ──
-(function() {
-    var canvas = document.getElementById('marginChart');
-    if (!canvas || !productNames.length) return;
+    var tip = { backgroundColor:'#3d2010', titleColor:'#f7e4d8', bodyColor:'#fff', borderColor:'#C98A6B', borderWidth:1, padding:12, cornerRadius:10 };
 
-    var colors = productMargins.map(function(m) {
-        if (m >= 30) return 'rgba(56,161,105,0.85)';
-        if (m >= 15) return 'rgba(214,158,46,0.85)';
-        return 'rgba(229,62,62,0.75)';
-    });
+    // Chart 1 — Doughnut: Revenue vs Cost vs Profit
+    (function() {
+        var canvas = document.getElementById('revCostChart');
+        if (!canvas) return;
+        var tRev = revenue.reduce(function(a,b){return a+b;},0);
+        var tCost = cost.reduce(function(a,b){return a+b;},0);
+        var tProfit = profit.reduce(function(a,b){return a+b;},0);
+        if (!tRev) { canvas.parentElement.innerHTML = '<div class="text-center py-10 muted-text">No data</div>'; return; }
+        var dc = rdylbu(3);
+        new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: { labels:['Revenue','Cost','Profit'], datasets:[{ data:[tRev,tCost,tProfit],
+                backgroundColor: dc.map(function(c){return toRgba(c,0.85);}), borderColor:dc, borderWidth:3, hoverOffset:10 }] },
+            options: { responsive:true, maintainAspectRatio:false, cutout:'60%',
+                animation:{ animateRotate:true, animateScale:true, duration:900 },
+                plugins:{ legend:{ position:'bottom', labels:{ color:'#7C4A2D', font:{size:12}, padding:16, usePointStyle:true } },
+                    tooltip: Object.assign({},tip,{ callbacks:{ label:function(ctx){ return ' '+ctx.label+': \u20B1'+ctx.raw.toFixed(2); } } }) } },
+            plugins:[{ id:'centre', afterDraw:function(chart){
+                var total=chart.data.datasets[0].data.reduce(function(a,b){return a+b;},0);
+                if(!total) return;
+                var c2=chart.ctx, cx=chart.chartArea.left+(chart.chartArea.right-chart.chartArea.left)/2, cy=chart.chartArea.top+(chart.chartArea.bottom-chart.chartArea.top)/2;
+                c2.save(); c2.textAlign='center'; c2.textBaseline='middle';
+                c2.fillStyle='#7C4A2D'; c2.font="bold 15px 'Poppins',sans-serif"; c2.fillText('\u20B1'+tRev.toFixed(0),cx,cy-8);
+                c2.fillStyle='#C98A6B'; c2.font="10px 'Poppins',sans-serif"; c2.fillText('Revenue',cx,cy+10); c2.restore();
+            }}]
+        });
+    })();
 
-    var prevY = {};
-    var totalPts = productNames.length;
-    var delay = 900 / totalPts;
-
-    new Chart(canvas.getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: productNames,
-            datasets: [{
-                label: 'Margin %',
-                data: productMargins,
-                backgroundColor: colors,
-                borderRadius: { topRight:6, bottomRight:6 },
-                borderSkipped: false
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            // Left-to-right sequential animation
-            animation: {
-                x: {
-                    easing: 'easeOutQuart',
-                    duration: function(ctx) { return 500 + ctx.dataIndex * 100; },
-                    from: function(ctx) { return ctx.chart.scales.x.getPixelForValue(0); }
-                },
-                y: { duration: 0 }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: Object.assign({}, tooltipDefaults, {
-                    callbacks: {
-                        label: function(ctx) { return ' Margin: ' + ctx.raw + '%'; }
-                    }
-                }),
-                // Threshold reference line at 30%
-                annotation: undefined
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    max: 100,
-                    grid: { color: 'rgba(69,117,180,0.08)', drawBorder: false },
-                    border: { dash: [4,4], display: false },
-                    ticks: { callback: function(v) { return v + '%'; }, color: '#74add1', font: { size: 11 } }
-                },
-                y: {
-                    grid: { display: false },
-                    border: { display: false },
-                    ticks: { color: '#313695', font: { size: 11, weight: '600' } }
+    // Chart 2 — Horizontal bar: Profit Margin (high=blue, low=red via RdYlBu)
+    (function() {
+        var canvas = document.getElementById('marginChart');
+        if (!canvas || !names.length) { if(canvas) canvas.parentElement.innerHTML='<div class="text-center py-10 muted-text">No data</div>'; return; }
+        var colors = margins.map(function(m) {
+            var t = 0.1 + (Math.min(Math.max(m,0),100)/100)*0.9;
+            return typeof d3!=='undefined' ? d3.interpolateRdYlBu(t) : '#C98A6B';
+        });
+        new Chart(canvas.getContext('2d'), {
+            type:'bar',
+            data:{ labels:names, datasets:[{ label:'Margin %', data:margins,
+                backgroundColor:colors.map(function(c){return toRgba(c,0.85);}), borderColor:colors, borderWidth:1,
+                borderRadius:{topRight:6,bottomRight:6}, borderSkipped:false }] },
+            options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+                animation:{ x:{ easing:'easeOutQuart', duration:function(ctx){return 400+ctx.dataIndex*80;}, from:function(ctx){return ctx.chart.scales.x.getPixelForValue(0);} }, y:{duration:0} },
+                plugins:{ legend:{display:false}, tooltip:Object.assign({},tip,{ callbacks:{ label:function(ctx){return ' Margin: '+ctx.raw+'%';} } }) },
+                scales:{
+                    x:{ beginAtZero:true, max:100, grid:{color:'rgba(215,48,39,0.08)'}, ticks:{ callback:function(v){return v+'%';}, color:'#C98A6B', font:{size:11} } },
+                    y:{ grid:{display:false}, ticks:{ color:'#7C4A2D', font:{size:11,weight:'600'} } }
                 }
             }
-        },
-        plugins: [{
-            // Draw threshold lines at 15% and 30%
-            id: 'thresholdLines',
-            afterDraw: function(chart) {
-                var ctx2 = chart.ctx;
-                var xScale = chart.scales.x;
-                var yArea  = chart.chartArea;
-                [15, 30].forEach(function(val, i) {
-                    var x = xScale.getPixelForValue(val);
-                    ctx2.save();
-                    ctx2.beginPath();
-                    ctx2.moveTo(x, yArea.top);
-                    ctx2.lineTo(x, yArea.bottom);
-                    ctx2.strokeStyle = i === 0 ? 'rgba(214,158,46,0.5)' : 'rgba(56,161,105,0.5)';
-                    ctx2.lineWidth = 1.5;
-                    ctx2.setLineDash([4, 4]);
-                    ctx2.stroke();
-                    ctx2.fillStyle = i === 0 ? '#d69e2e' : '#38a169';
-                    ctx2.font = "10px 'Poppins', sans-serif";
-                    ctx2.fillText(val + '%', x + 3, yArea.top + 10);
-                    ctx2.restore();
-                });
-            }
-        }]
-    });
-})();
+        });
+    })();
+});
 </script>
 {% endblock %}
