@@ -1293,6 +1293,78 @@ def debug_order_request(request):
         'content_type': request.content_type,
     })
 
+# ========== BUNDLE VIEWS ==========
+
+@login_required
+def bundle_list(request):
+    bundles = Bundle.objects.all()
+    return render(request, 'core/bundle_list.html', {'bundles': bundles})
+
+@login_required
+@require_POST
+def bundle_add(request):
+    name = request.POST.get('name', '')
+    description = request.POST.get('description', '')
+    original_price = request.POST.get('original_price', 0)
+    bundle_price = request.POST.get('bundle_price', 0)
+    order = int(request.POST.get('order', 0))
+    image = request.FILES.get('image')
+    try:
+        Bundle.objects.create(
+            name=name, description=description,
+            original_price=original_price, bundle_price=bundle_price,
+            image=image, order=order
+        )
+        messages.success(request, 'Bundle added successfully.')
+    except Exception as e:
+        messages.error(request, f'Error: {str(e)}')
+    return redirect('bundle_list')
+
+@login_required
+@require_POST
+def bundle_toggle(request, pk):
+    bundle = get_object_or_404(Bundle, pk=pk)
+    bundle.is_active = not bundle.is_active
+    bundle.save(update_fields=['is_active'])
+    return JsonResponse({'is_active': bundle.is_active})
+
+@login_required
+@require_POST
+def bundle_delete(request, pk):
+    bundle = get_object_or_404(Bundle, pk=pk)
+    try:
+        if bundle.image:
+            bundle.image.delete(save=False)
+    except Exception:
+        pass
+    bundle.delete()
+    messages.success(request, 'Bundle deleted.')
+    return redirect('bundle_list')
+
+def bundles_api(request):
+    """Public API — returns active bundles for app home screen."""
+    bundles = Bundle.objects.filter(is_active=True).order_by('order', '-created_at')
+    data = []
+    for b in bundles:
+        image_url = None
+        if b.image:
+            try:
+                image_url = request.build_absolute_uri(b.image.url)
+            except Exception:
+                image_url = b.image.url
+        data.append({
+            'id': b.id,
+            'name': b.name,
+            'description': b.description,
+            'image_url': image_url,
+            'original_price': float(b.original_price),
+            'bundle_price': float(b.bundle_price),
+            'discount_amount': float(b.discount_amount),
+            'discount_percent': b.discount_percent,
+            'order': b.order,
+        })
+    return JsonResponse(data, safe=False)
+
 def app_features_api(request):
     features = AppFeature.objects.filter(is_active=True).order_by('order', '-created_at')
     data = []

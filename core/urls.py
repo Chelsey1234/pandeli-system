@@ -114,6 +114,15 @@ urlpatterns = [
          name='create_bulk_notification'),
     
     # ------------------------------------------
+    # BUNDLES (app home screen bundle deals)
+    # ------------------------------------------
+    path('products/bundles/', views.bundle_list, name='bundle_list'),
+    path('products/bundles/add/', views.bundle_add, name='bundle_add'),
+    path('products/bundles/<int:pk>/toggle/', views.bundle_toggle, name='bundle_toggle'),
+    path('products/bundles/<int:pk>/delete/', views.bundle_delete, name='bundle_delete'),
+    path('api/bundles/', views.bundles_api, name='bundles_api'),
+
+    # ------------------------------------------
     # APP FEATURES (app home screen carousel)
     # ------------------------------------------
     path('products/app-features/', views.app_feature_list, name='app_feature_list'),

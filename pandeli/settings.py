@@ -222,6 +222,7 @@ PUBLIC_PATHS = [
     '/api/app-features/',
     '/api/products/new_arrivals/',
     '/api/products/best_sellers/',
+    '/api/bundles/',
 ]
 
 IMPORT_EXPORT_USE_TRANSACTIONS = True

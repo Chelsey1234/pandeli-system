@@ -122,6 +122,18 @@
     <i class="fas fa-file-import flex-shrink-0" style="width:20px;text-align:center;"></i>
     <span class="sidebar-label ml-3" style="white-space:nowrap;">Import</span>
 </a></li>
+<li><a href="{% url 'app_feature_list' %}" title="App Features"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'app_feature_list' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-images flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">App Features</span>
+</a></li>
+<li><a href="{% url 'bundle_list' %}" title="Bundle Deals"
+   class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
+   style="{% if n == 'bundle_list' %}background:#fdf5f0;border-left:3px solid #7C4A2D;color:#7C4A2D;font-weight:600;{% else %}border-left:3px solid transparent;color:#6b7280;{% endif %}padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
+    <i class="fas fa-gift flex-shrink-0" style="width:20px;text-align:center;"></i>
+    <span class="sidebar-label ml-3" style="white-space:nowrap;">Bundle Deals</span>
+</a></li>
 <li><a href="{% url 'messages' %}" title="Messages"
    class="sidebar-nav-link flex items-center py-2.5 text-sm transition-all duration-150"
    style="border-left:3px solid transparent;color:#6b7280;padding-left:20px;padding-right:12px;border-radius:0 12px 12px 0;margin-right:8px;">
