@@ -120,6 +120,7 @@ urlpatterns = [
     path('products/bundles/add/', views.bundle_add, name='bundle_add'),
     path('products/bundles/<int:pk>/toggle/', views.bundle_toggle, name='bundle_toggle'),
     path('products/bundles/<int:pk>/delete/', views.bundle_delete, name='bundle_delete'),
+    path('products/bundles/<int:pk>/edit/', views.bundle_edit, name='bundle_edit'),
     path('api/bundles/', views.bundles_api, name='bundles_api'),
 
     # ------------------------------------------

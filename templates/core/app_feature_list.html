@@ -154,6 +154,10 @@
                         {% if bundle.is_active %}<i class="fas fa-eye-slash mr-1"></i>Hide{% else %}<i class="fas fa-eye mr-1"></i>Show{% endif %}
                     </button>
                 </form>
+                <button onclick="editBundle({{ bundle.pk }}, '{{ bundle.name|escapejs }}', '{{ bundle.subtitle|escapejs }}', '{{ bundle.description|escapejs }}', {{ bundle.item_count }}, '{{ bundle.category }}')"
+                        class="px-3 py-1.5 text-xs rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors">
+                    <i class="fas fa-edit"></i>
+                </button>
                 <form method="post" action="{% url 'bundle_delete' bundle.pk %}"
                       onsubmit="return confirm('Delete this bundle?')">
                     {% csrf_token %}
@@ -288,6 +292,66 @@
     </div>
 </div>
 
+<!-- Edit Bundle Modal -->
+<div id="editBundleModalOverlay"
+     class="hidden fixed inset-0 flex items-center justify-center"
+     style="z-index:99999; background:rgba(0,0,0,0.6);">
+    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md mx-4">
+        <div class="px-6 py-4 flex items-center justify-between" style="background:#7C4A2D;">
+            <h5 class="text-white font-semibold text-base"><i class="fas fa-edit mr-2"></i>Edit Bundle</h5>
+            <button type="button" onclick="closeEditBundleModal()" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+        <form method="post" action="" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bundle Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="name" required class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Subtitle</label>
+                    <input type="text" name="subtitle" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea name="description" rows="2" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Number of Items</label>
+                        <input type="number" name="item_count" min="1" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <select name="category" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                            <option value="">All Products</option>
+                            <option value="bread">🍞 Bread</option>
+                            <option value="pastries">🥐 Pastries</option>
+                            <option value="croissants">🥐 Croissants</option>
+                            <option value="beverages">☕ Beverages</option>
+                            <option value="spread">🍯 Spread</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Replace Image <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <input type="file" name="image" accept="image/*" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Display Order</label>
+                    <input type="number" name="order" value="0" min="0" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                </div>
+            </div>
+            <div class="px-6 pb-6 flex justify-end gap-3">
+                <button type="button" onclick="closeEditBundleModal()" class="px-4 py-2 text-sm rounded-xl bg-gray-100 text-gray-600">Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm rounded-xl text-white font-medium" style="background:#7C4A2D;">
+                    <i class="fas fa-save mr-1"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% block extra_js %}
 <script>
 function openFeatureModal() {
@@ -311,6 +375,24 @@ function closeBundleModal() {
 }
 document.getElementById('bundleModalOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeBundleModal();
+});
+function editBundle(pk, name, subtitle, description, itemCount, category) {
+    var modal = document.getElementById('editBundleModalOverlay');
+    modal.querySelector('[name=name]').value = name;
+    modal.querySelector('[name=subtitle]').value = subtitle;
+    modal.querySelector('[name=description]').value = description;
+    modal.querySelector('[name=item_count]').value = itemCount;
+    modal.querySelector('[name=category]').value = category;
+    modal.querySelector('form').action = '/products/bundles/' + pk + '/edit/';
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+function closeEditBundleModal() {
+    document.getElementById('editBundleModalOverlay').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+document.getElementById('editBundleModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeEditBundleModal();
 });
 </script>
 {% endblock %}

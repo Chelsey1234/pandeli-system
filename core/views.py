@@ -1338,7 +1338,25 @@ def bundle_toggle(request, pk):
 
 @login_required
 @require_POST
-def bundle_delete(request, pk):
+def bundle_edit(request, pk):
+    bundle = get_object_or_404(Bundle, pk=pk)
+    bundle.name = request.POST.get('name', bundle.name)
+    bundle.subtitle = request.POST.get('subtitle', bundle.subtitle)
+    bundle.description = request.POST.get('description', bundle.description)
+    bundle.item_count = int(request.POST.get('item_count', bundle.item_count))
+    bundle.category = request.POST.get('category', bundle.category)
+    bundle.order = int(request.POST.get('order', bundle.order))
+    image = request.FILES.get('image')
+    if image:
+        try:
+            if bundle.image:
+                bundle.image.delete(save=False)
+        except Exception:
+            pass
+        bundle.image = image
+    bundle.save()
+    messages.success(request, f'Bundle "{bundle.name}" updated.')
+    return redirect('app_feature_list')
     bundle = get_object_or_404(Bundle, pk=pk)
     try:
         if bundle.image:
