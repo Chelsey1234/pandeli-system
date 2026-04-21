@@ -447,6 +447,7 @@ class Bundle(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     subtitle = models.CharField(max_length=200, blank=True, help_text="e.g. 'Any 5 items'")
+    image = models.ImageField(upload_to='bundles/', null=True, blank=True, help_text="Promo image shown in app bundle card")
     item_count = models.PositiveIntegerField(default=1, help_text="Number of items customer must pick")
     category = models.CharField(
         max_length=20,

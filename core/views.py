@@ -1313,11 +1313,13 @@ def bundle_add(request):
     item_count = int(request.POST.get('item_count', 1))
     category = request.POST.get('category', '')
     order = int(request.POST.get('order', 0))
+    image = request.FILES.get('image')
     try:
         Bundle.objects.create(
             name=name, description=description,
             subtitle=subtitle, item_count=item_count,
-            category=category, order=order
+            category=category, order=order,
+            image=image
         )
         messages.success(request, 'Bundle added successfully.')
     except Exception as e:
@@ -1358,6 +1360,12 @@ def bundles_api(request):
         if b.category:
             product_qs = product_qs.filter(category=b.category)
         products = list(product_qs.values('id', 'name', 'price', 'category', 'description'))
+        image_url = None
+        if b.image:
+            try:
+                image_url = request.build_absolute_uri(b.image.url)
+            except Exception:
+                image_url = b.image.url
         data.append({
             'id': b.id,
             'name': b.name,
@@ -1365,6 +1373,7 @@ def bundles_api(request):
             'subtitle': b.subtitle,
             'item_count': b.item_count,
             'category': b.category,
+            'image_url': image_url,
             'order': b.order,
             'products': products,
         })

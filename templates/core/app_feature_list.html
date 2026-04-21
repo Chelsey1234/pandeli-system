@@ -108,8 +108,19 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for bundle in bundles %}
         <div class="bg-white rounded-xl shadow-sm border {% if bundle.is_active %}border-orange-200{% else %}border-gray-200 opacity-60{% endif %} overflow-hidden">
-            <!-- Colored card header (no image) -->
-            <div class="px-5 py-4 flex items-center gap-3"
+            <!-- Show image if available, else colored card -->
+            {% if bundle.image %}
+            <div class="relative">
+                <img src="{{ bundle.image.url }}" alt="{{ bundle.name }}"
+                     class="w-full h-40 object-cover"
+                     onerror="this.style.background='#f3f4f6';this.removeAttribute('src');">
+                <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-medium
+                    {% if bundle.is_active %}bg-green-500 text-white{% else %}bg-gray-400 text-white{% endif %}">
+                    {% if bundle.is_active %}✅ Active{% else %}Hidden{% endif %}
+                </span>
+            </div>
+            {% else %}
+            <div class="px-5 py-4 flex items-center gap-3 relative"
                  style="background:linear-gradient(135deg,#C98A6B,#7C4A2D);">
                 <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
                     <i class="fas fa-gift text-white text-lg"></i>
@@ -123,16 +134,15 @@
                     {% if bundle.is_active %}Active{% else %}Hidden{% endif %}
                 </span>
             </div>
-            <div class="px-4 py-3 text-xs text-gray-500 space-y-1">
-                <div class="flex justify-between">
-                    <span>Pick items:</span>
-                    <span class="font-semibold text-gray-700">{{ bundle.item_count }} item{{ bundle.item_count|pluralize }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Category:</span>
-                    <span class="font-semibold text-gray-700">
-                        {% if bundle.category %}{{ bundle.get_category_display }}{% else %}All Products{% endif %}
-                    </span>
+            {% endif %}
+            <div class="px-4 py-3">
+                {% if bundle.image %}
+                <p class="font-bold text-gray-800 text-sm">{{ bundle.name }}</p>
+                <p class="text-gray-500 text-xs mt-0.5">{{ bundle.subtitle|default:bundle.description }}</p>
+                {% endif %}
+                <div class="flex justify-between text-xs text-gray-500 mt-2">
+                    <span>Pick: <strong class="text-gray-700">{{ bundle.item_count }} item{{ bundle.item_count|pluralize }}</strong></span>
+                    <span>Category: <strong class="text-gray-700">{% if bundle.category %}{{ bundle.get_category_display }}{% else %}All{% endif %}</strong></span>
                 </div>
             </div>
             <div class="px-4 pb-4 flex gap-2">
@@ -223,6 +233,14 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Bundle Name <span class="text-red-500">*</span></label>
                     <input type="text" name="name" required placeholder="e.g. Buy 5 Get 1 Free"
                            class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Promo Image <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input type="file" name="image" accept="image/*"
+                           class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
+                    <p class="text-xs text-gray-400 mt-1">Upload a promo image (e.g. "Order Pandeli Bundles NOW!")</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Subtitle</label>
