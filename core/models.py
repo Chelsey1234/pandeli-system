@@ -446,9 +446,14 @@ class AppFeature(models.Model):
 class Bundle(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to='bundles/', null=True, blank=True)
-    original_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    bundle_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    subtitle = models.CharField(max_length=200, blank=True, help_text="e.g. 'Any 5 items'")
+    item_count = models.PositiveIntegerField(default=1, help_text="Number of items customer must pick")
+    category = models.CharField(
+        max_length=20,
+        choices=Product.CATEGORY_CHOICES,
+        blank=True,
+        help_text="Leave blank to include all products"
+    )
     is_active = models.BooleanField(default=True)
     order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -459,13 +464,3 @@ class Bundle(models.Model):
 
     def __str__(self):
         return self.name
-
-    @property
-    def discount_amount(self):
-        return self.original_price - self.bundle_price
-
-    @property
-    def discount_percent(self):
-        if self.original_price > 0:
-            return round((self.discount_amount / self.original_price) * 100, 1)
-        return 0
