@@ -1233,9 +1233,12 @@ def privacy_policy(request):
 
 @login_required
 def app_feature_list(request):
-    features = AppFeature.objects.all()
     try:
-        bundles = Bundle.objects.all()
+        features = list(AppFeature.objects.all())
+    except Exception:
+        features = []
+    try:
+        bundles = list(Bundle.objects.all())
     except Exception:
         bundles = []
     return render(request, 'core/app_feature_list.html', {'features': features, 'bundles': bundles})
@@ -1301,8 +1304,7 @@ def debug_order_request(request):
 
 @login_required
 def bundle_list(request):
-    bundles = Bundle.objects.all()
-    return render(request, 'core/bundle_list.html', {'bundles': bundles})
+    return redirect('app_feature_list')
 
 @login_required
 @require_POST
