@@ -1357,6 +1357,19 @@ def bundle_edit(request, pk):
     bundle.save()
     messages.success(request, f'Bundle "{bundle.name}" updated.')
     return redirect('app_feature_list')
+
+@login_required
+@require_POST
+def bundle_delete(request, pk):
+    bundle = get_object_or_404(Bundle, pk=pk)
+    try:
+        if bundle.image:
+            bundle.image.delete(save=False)
+    except Exception:
+        pass
+    bundle.delete()
+    messages.success(request, 'Bundle deleted.')
+    return redirect('app_feature_list')
     bundle = get_object_or_404(Bundle, pk=pk)
     try:
         if bundle.image:
