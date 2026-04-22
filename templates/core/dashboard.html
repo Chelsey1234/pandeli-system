@@ -8,18 +8,10 @@
     <!-- Summary Cards -->
     {% include 'core/dashboard/includes/summary_cards.html' %}
 
-    <!-- Charts Row 1 -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2">
-            {% include 'core/dashboard/includes/sales_line_chart.html' %}
-        </div>
-        <div>
-            {% include 'core/dashboard/includes/best_sellers_chart.html' %}
-        </div>
-    </div>
-
-    <!-- Charts Row 2 -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Charts — full width, stacked vertically -->
+    <div class="space-y-6">
+        {% include 'core/dashboard/includes/sales_line_chart.html' %}
+        {% include 'core/dashboard/includes/best_sellers_chart.html' %}
         {% include 'core/dashboard/includes/category_chart.html' %}
         {% include 'core/dashboard/includes/top_products_chart.html' %}
     </div>
