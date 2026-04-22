@@ -63,7 +63,7 @@ def login_view(request):
         if user is not None:
             if user.is_active:
                 login(request, user)
-                messages.success(request, f'Welcome back, {user.username}!')
+                messages.success(request, f'Login Successfully!')
                 
                 # Check if "Remember me" is checked
                 if not request.POST.get('remember_me'):
