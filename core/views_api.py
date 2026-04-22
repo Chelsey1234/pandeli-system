@@ -72,6 +72,12 @@ class ProductViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        if not recipes:
+            return Response(
+                {'error': 'At least one raw material is required to create a product.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
@@ -88,6 +94,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             recipes = self._parse_recipes(request)
         except ValueError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not recipes:
+            return Response(
+                {'error': 'At least one raw material is required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
