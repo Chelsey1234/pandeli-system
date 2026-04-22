@@ -29,7 +29,7 @@ def notifications(request):
         try:
             from .models import Notification
             from django.db.models import Q
-            base_filter = Q(recipient_user=request.user) | Q(recipient_type='all') | Q(recipient_type='admin')
+            base_filter = Q(recipient_user=request.user)
             unread_count = Notification.objects.filter(base_filter, is_read=False).count()
             recent_notifications = Notification.objects.filter(
                 base_filter

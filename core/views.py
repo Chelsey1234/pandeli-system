@@ -1599,9 +1599,7 @@ def supplier_list(request):
 @login_required
 def messages_view(request):
     notifications = Notification.objects.filter(
-        Q(recipient_user=request.user) |
-        Q(recipient_type='all') |
-        Q(recipient_type='admin')
+        recipient_user=request.user
     ).order_by('-created_at')
     
     # Filter by type
@@ -1626,9 +1624,7 @@ def messages_view(request):
     
     # Get unread count
     unread_count = Notification.objects.filter(
-        Q(recipient_user=request.user) |
-        Q(recipient_type='all') |
-        Q(recipient_type='admin'),
+        recipient_user=request.user,
         is_read=False
     ).count()
     
@@ -1962,11 +1958,9 @@ def notifications_api(request):
     limit = int(request.GET.get('limit', 20))
     
     notifications = Notification.objects.filter(
-        Q(recipient_user=request.user) |
-        Q(recipient_type='all') |
-        Q(recipient_type='admin')
+        recipient_user=request.user
     )
-    
+
     if notification_type == 'unread':
         notifications = notifications.filter(is_read=False)
     elif notification_type != 'all':
@@ -1996,9 +1990,7 @@ def mark_notification_read(request, notification_id):
     """Mark a single notification as read"""
     try:
         notification = Notification.objects.get(
-            Q(recipient_user=request.user) |
-            Q(recipient_type='all') |
-            Q(recipient_type='admin'),
+            recipient_user=request.user,
             id=notification_id
         )
         notification.mark_as_read()
@@ -2012,9 +2004,7 @@ def mark_notification_read(request, notification_id):
 def mark_all_notifications_read(request):
     """Mark all notifications as read for the current user"""
     count = Notification.objects.filter(
-        Q(recipient_user=request.user) |
-        Q(recipient_type='all') |
-        Q(recipient_type='admin'),
+        recipient_user=request.user,
         is_read=False
     ).update(is_read=True)
     return JsonResponse({'success': True, 'count': count})
@@ -2030,9 +2020,7 @@ def notification_count(request):
         pass
 
     count = Notification.objects.filter(
-        Q(recipient_user=request.user) |
-        Q(recipient_type='all') |
-        Q(recipient_type='admin'),
+        recipient_user=request.user,
         is_read=False
     ).count()
     return JsonResponse({'count': count})
