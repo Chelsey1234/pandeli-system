@@ -6,19 +6,90 @@
 {% block content %}
 <div class="page-header">
     <h2 class="pg-heading"><i class="fas fa-receipt mr-2" style="color:#C98A6B;"></i>Order {{ order.order_number }}</h2>
-    <div class="flex gap-2">
+    <div class="flex gap-2 flex-wrap">
         <a href="{% url 'order_list' %}" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
-        {% if order.status == 'pending' %}
-        <form method="post" action="{% url 'confirm_order' order.id %}" class="inline">
-            {% csrf_token %}
-            <button type="submit" onclick="return confirm('Confirm this order?')" class="btn-primary">
-                <i class="fas fa-check"></i> Confirm Order
+
+        <!-- Status update dropdown -->
+        {% if order.status != 'delivered' and order.status != 'cancelled' %}
+        <div class="relative" id="statusDropdownWrap">
+            <button onclick="document.getElementById('statusDropdown').classList.toggle('hidden')"
+                    class="btn-primary flex items-center gap-2">
+                <i class="fas fa-exchange-alt"></i> Update Status
+                <i class="fas fa-chevron-down text-xs"></i>
+            </button>
+            <div id="statusDropdown" class="hidden absolute right-0 mt-1 w-52 rounded-xl shadow-lg z-50 py-1 overflow-hidden"
+                 style="background:#fff;border:1px solid #e8d5c8;">
+                {% if order.status == 'pending' %}
+                <form method="post" action="{% url 'update_order_status' order.id %}">
+                    {% csrf_token %}<input type="hidden" name="status" value="confirmed">
+                    <button type="submit" class="w-full text-left px-4 py-2.5 text-sm transition-colors" style="color:#2c5282;" onmouseover="this.style.background='#ebf8ff'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-check-circle mr-2"></i> Confirm
+                    </button>
+                </form>
+                {% endif %}
+                {% if order.status == 'confirmed' %}
+                <form method="post" action="{% url 'update_order_status' order.id %}">
+                    {% csrf_token %}<input type="hidden" name="status" value="preparing">
+                    <button type="submit" class="w-full text-left px-4 py-2.5 text-sm transition-colors" style="color:#9a3412;" onmouseover="this.style.background='#fff7ed'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-fire mr-2"></i> Start Preparing
+                    </button>
+                </form>
+                {% endif %}
+                {% if order.status == 'preparing' %}
+                <form method="post" action="{% url 'update_order_status' order.id %}">
+                    {% csrf_token %}<input type="hidden" name="status" value="ready">
+                    <button type="submit" class="w-full text-left px-4 py-2.5 text-sm transition-colors" style="color:#0f766e;" onmouseover="this.style.background='#f0fdfa'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-box-open mr-2"></i> Mark Ready
+                    </button>
+                </form>
+                {% endif %}
+                {% if order.status == 'ready' %}
+                <form method="post" action="{% url 'update_order_status' order.id %}">
+                    {% csrf_token %}<input type="hidden" name="status" value="out_for_delivery">
+                    <button type="submit" class="w-full text-left px-4 py-2.5 text-sm transition-colors" style="color:#6b21a8;" onmouseover="this.style.background='#faf5ff'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-truck mr-2"></i> Out for Delivery
+                    </button>
+                </form>
+                {% endif %}
+                {% if order.status == 'out_for_delivery' or order.status == 'ready' %}
+                <form method="post" action="{% url 'update_order_status' order.id %}">
+                    {% csrf_token %}<input type="hidden" name="status" value="delivered">
+                    <button type="submit" class="w-full text-left px-4 py-2.5 text-sm transition-colors" style="color:#276749;" onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-check-double mr-2"></i> Mark Delivered
+                    </button>
+                </form>
+                {% endif %}
+                <div style="border-top:1px solid #faf0ea;margin:4px 0;"></div>
+                <form method="post" action="{% url 'update_order_status' order.id %}" onsubmit="return confirm('Cancel this order?')">
+                    {% csrf_token %}<input type="hidden" name="status" value="cancelled">
+                    <button type="submit" class="w-full text-left px-4 py-2.5 text-sm transition-colors" style="color:#9b2c2c;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-times-circle mr-2"></i> Cancel Order
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Payment status update -->
+        {% if order.payment_status != 'paid' %}
+        <form method="post" action="{% url 'update_payment_status' order.id %}" class="inline">
+            {% csrf_token %}<input type="hidden" name="payment_status" value="paid">
+            <button type="submit" onclick="return confirm('Mark this order as paid?')" class="btn-secondary" style="border-color:#276749;color:#276749;">
+                <i class="fas fa-money-bill-wave"></i> Mark as Paid
             </button>
         </form>
         {% endif %}
+
         <button onclick="window.print()" class="btn-ghost"><i class="fas fa-print"></i> Print</button>
     </div>
 </div>
+
+<script>
+document.addEventListener('click', function(e) {
+    const dd = document.getElementById('statusDropdown');
+    if (dd && !e.target.closest('#statusDropdownWrap')) dd.classList.add('hidden');
+});
+</script>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
     <!-- Order Info -->
@@ -37,14 +108,37 @@
                 <div class="flex justify-between items-center py-1" style="border-bottom:1px solid #faf0ea;">
                     <dt class="label-text">Status</dt>
                     <dd>
-                        <span class="pill {% if order.status == 'pending' %}pill-yellow{% elif order.status == 'confirmed' %}pill-blue{% elif order.status == 'delivered' %}pill-green{% elif order.status == 'cancelled' %}pill-red{% else %}pill-gray{% endif %}">
+                        <span class="pill
+                            {% if order.status == 'pending' %}pill-yellow
+                            {% elif order.status == 'confirmed' %}pill-blue
+                            {% elif order.status == 'preparing' %}pill-orange
+                            {% elif order.status == 'ready' %}pill-teal
+                            {% elif order.status == 'out_for_delivery' %}pill-purple
+                            {% elif order.status == 'delivered' %}pill-green
+                            {% elif order.status == 'cancelled' %}pill-red
+                            {% else %}pill-gray{% endif %}">
                             {{ order.get_status_display }}
                         </span>
                     </dd>
                 </div>
                 <div class="flex justify-between items-center py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Payment</dt>
-                    <dd><span class="pill {% if order.payment_status == 'paid' %}pill-green{% else %}pill-yellow{% endif %}">{{ order.get_payment_status_display }}</span></dd>
+                    <dt class="label-text">Payment Status</dt>
+                    <dd>
+                        <span class="pill
+                            {% if order.payment_status == 'paid' %}pill-green
+                            {% elif order.payment_status == 'failed' %}pill-red
+                            {% elif order.payment_status == 'refunded' %}pill-purple
+                            {% else %}pill-yellow{% endif %}">
+                            {{ order.get_payment_status_display }}
+                        </span>
+                    </dd>
+                </div>
+                <div class="flex justify-between items-center py-1" style="border-bottom:1px solid #faf0ea;">
+                    <dt class="label-text">Payment Method</dt>
+                    <dd class="flex items-center gap-1.5 body-text">
+                        <i class="{% if order.payment_method == 'gcash' %}fas fa-mobile-alt{% else %}fas fa-money-bill-wave{% endif %}" style="color:#C98A6B;"></i>
+                        {{ order.get_payment_method_display }}
+                    </dd>
                 </div>
                 <div class="flex justify-between items-center py-1" style="border-bottom:1px solid #faf0ea;">
                     <dt class="label-text">Order Date</dt>

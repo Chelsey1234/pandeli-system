@@ -55,6 +55,9 @@ body {
 .pill-yellow { background:#fffbeb; color:#92400e; }
 .pill-blue   { background:#ebf8ff; color:#2c5282; }
 .pill-gray   { background:#f7f7f7; color:#6b7280; }
+.pill-orange { background:#fff7ed; color:#9a3412; }
+.pill-teal   { background:#f0fdfa; color:#0f766e; }
+.pill-purple { background:#faf5ff; color:#6b21a8; }
 .pill-brand  { background:#fdf5f0; color:#7C4A2D; }
 
 /* ── Buttons ─────────────────────────────────────────────── */

@@ -28,12 +28,11 @@ def notifications(request):
     if hasattr(request, 'user') and request.user.is_authenticated:
         try:
             from .models import Notification
-            unread_count = Notification.objects.filter(
-                recipient_user=request.user,
-                is_read=False
-            ).count()
+            from django.db.models import Q
+            base_filter = Q(recipient_user=request.user) | Q(recipient_type='all') | Q(recipient_type='admin')
+            unread_count = Notification.objects.filter(base_filter, is_read=False).count()
             recent_notifications = Notification.objects.filter(
-                recipient_user=request.user
+                base_filter
             ).only('id', 'title', 'message', 'notification_type', 'is_read', 'created_at', 'link'
             ).order_by('-created_at')[:5]
             context = {

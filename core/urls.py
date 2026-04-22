@@ -56,6 +56,8 @@ urlpatterns = [
     path('orders/', views.order_list, name='order_list'),
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
     path('orders/<int:pk>/confirm/', views.confirm_order, name='confirm_order'),
+    path('orders/<int:pk>/update-status/', views.update_order_status, name='update_order_status'),
+    path('orders/<int:pk>/update-payment/', views.update_payment_status, name='update_payment_status'),
     
     # ------------------------------------------
     # SALES & FORECASTING

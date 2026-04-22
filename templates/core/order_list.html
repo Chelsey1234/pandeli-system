@@ -47,7 +47,7 @@
                     <th>Customer</th>
                     <th>Items</th>
                     <th>Total</th>
-                    <th>Status</th>
+                    <th>Order Status</th>
                     <th>Payment</th>
                     <th>Actions</th>
                 </tr>
@@ -69,6 +69,9 @@
                         <span class="pill
                             {% if order.status == 'pending' %}pill-yellow
                             {% elif order.status == 'confirmed' %}pill-blue
+                            {% elif order.status == 'preparing' %}pill-orange
+                            {% elif order.status == 'ready' %}pill-teal
+                            {% elif order.status == 'out_for_delivery' %}pill-purple
                             {% elif order.status == 'delivered' %}pill-green
                             {% elif order.status == 'cancelled' %}pill-red
                             {% else %}pill-gray{% endif %}">
@@ -76,9 +79,19 @@
                         </span>
                     </td>
                     <td>
-                        <span class="pill {% if order.payment_status == 'paid' %}pill-green{% else %}pill-yellow{% endif %}">
+                        <span class="pill
+                            {% if order.payment_status == 'paid' %}pill-green
+                            {% elif order.payment_status == 'failed' %}pill-red
+                            {% elif order.payment_status == 'refunded' %}pill-purple
+                            {% else %}pill-yellow{% endif %}">
                             {{ order.get_payment_status_display }}
                         </span>
+                        {% if order.payment_method %}
+                        <span class="text-xs ml-1" style="color:#a0856e;">
+                            <i class="{% if order.payment_method == 'gcash' %}fas fa-mobile-alt{% else %}fas fa-money-bill{% endif %}"></i>
+                            {{ order.get_payment_method_display }}
+                        </span>
+                        {% endif %}
                     </td>
                     <td>
                         <div class="flex gap-1">
@@ -86,7 +99,7 @@
                             {% if order.status == 'pending' %}
                             <form method="post" action="{% url 'confirm_order' order.id %}" class="inline">
                                 {% csrf_token %}
-                                <button type="submit" onclick="return confirm('Confirm this order?')" class="btn-icon btn-icon-green" title="Confirm">
+                                <button type="submit" onclick="return confirm('Confirm this order?')" class="btn-icon btn-icon-green" title="Confirm Order">
                                     <i class="fas fa-check"></i>
                                 </button>
                             </form>

@@ -489,6 +489,16 @@ def confirm_order(request, pk):
                 # Notification — safely handle UUID customer_id
                 try:
                     from django.db import connection
+                    from .notifications import NotificationService
+                    # Notify admins about confirmed order
+                    NotificationService.notify_admins(
+                        title=f"Order #{order.order_number} Confirmed",
+                        message=f"Order #{order.order_number} has been confirmed and is being prepared.",
+                        notification_type='order',
+                        priority='medium',
+                        link=f"/orders/{order.pk}/",
+                        action_text='View Order'
+                    )
                     with connection.cursor() as cursor:
                         cursor.execute("SELECT customer_id FROM core_order WHERE id = %s", [order.pk])
                         row = cursor.fetchone()
@@ -514,6 +524,86 @@ def confirm_order(request, pk):
             except Exception as e:
                 messages.error(request, f'Error confirming order: {str(e)}')
     
+    return redirect('order_detail', pk=pk)
+
+
+@login_required
+@require_POST
+def update_order_status(request, pk):
+    """Update order status (confirmed → preparing → ready → delivered, or cancel)"""
+    order = get_object_or_404(Order, pk=pk)
+    new_status = request.POST.get('status')
+
+    valid_statuses = dict(Order.ORDER_STATUS).keys()
+    if new_status not in valid_statuses:
+        messages.error(request, 'Invalid status.')
+        return redirect('order_detail', pk=pk)
+
+    # Prevent going backwards (except cancellation)
+    status_flow = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered']
+    if new_status != 'cancelled' and new_status in status_flow and order.status in status_flow:
+        current_idx = status_flow.index(order.status)
+        new_idx = status_flow.index(new_status)
+        if new_idx < current_idx:
+            messages.error(request, f'Cannot move order back from "{order.get_status_display()}" to "{dict(Order.ORDER_STATUS)[new_status]}".')
+            return redirect('order_detail', pk=pk)
+
+    old_status = order.status
+    Order.objects.filter(pk=pk).update(status=new_status)
+
+    # Notify admins and customer
+    try:
+        from .notifications import NotificationService
+        status_label = dict(Order.ORDER_STATUS).get(new_status, new_status)
+        NotificationService.notify_admins(
+            title=f"Order #{order.order_number} → {status_label}",
+            message=f"Order status updated from {dict(Order.ORDER_STATUS).get(old_status, old_status)} to {status_label}.",
+            notification_type='order',
+            priority='medium',
+            link=f"/orders/{order.pk}/",
+            action_text='View Order'
+        )
+        # Notify customer if linked
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT customer_id FROM core_order WHERE id = %s", [pk])
+            row = cursor.fetchone()
+            if row and row[0]:
+                try:
+                    cid = int(row[0])
+                    customer = Customer.objects.filter(pk=cid).first()
+                    if customer and customer.user:
+                        Notification.objects.create(
+                            title=f"Order #{order.order_number}: {status_label}",
+                            message=f"Your order status is now: {status_label}.",
+                            notification_type='order',
+                            recipient_type='customer',
+                            recipient_user=customer.user,
+                            link=f"/orders/{order.pk}/"
+                        )
+                except (ValueError, TypeError):
+                    pass
+    except Exception:
+        pass
+
+    messages.success(request, f'Order #{order.order_number} status updated to "{dict(Order.ORDER_STATUS).get(new_status, new_status)}".')
+    return redirect('order_detail', pk=pk)
+
+
+@login_required
+@require_POST
+def update_payment_status(request, pk):
+    """Update payment status for an order"""
+    order = get_object_or_404(Order, pk=pk)
+    new_payment_status = request.POST.get('payment_status')
+
+    valid_payment_statuses = dict(Order.PAYMENT_STATUS).keys()
+    if new_payment_status not in valid_payment_statuses:
+        messages.error(request, 'Invalid payment status.')
+        return redirect('order_detail', pk=pk)
+
+    Order.objects.filter(pk=pk).update(payment_status=new_payment_status)
+    messages.success(request, f'Payment status updated to "{dict(Order.PAYMENT_STATUS).get(new_payment_status, new_payment_status)}".')
     return redirect('order_detail', pk=pk)
 
 # ========== SALES VIEWS ==========
@@ -1527,18 +1617,37 @@ def supplier_list(request):
 def messages_view(request):
     notifications = Notification.objects.filter(
         Q(recipient_user=request.user) |
+        Q(recipient_type='all') |
         Q(recipient_type='admin')
     ).order_by('-created_at')
+    
+    # Filter by type
+    notification_type = request.GET.get('type', 'all')
+    if notification_type == 'unread':
+        notifications = notifications.filter(is_read=False)
+    elif notification_type not in ('all', ''):
+        notifications = notifications.filter(notification_type=notification_type)
     
     # Mark as read
     notification_id = request.GET.get('read')
     if notification_id:
-        notification = get_object_or_404(Notification, id=notification_id)
-        notification.is_read = True
-        notification.save()
+        try:
+            notification = Notification.objects.get(
+                id=notification_id,
+                recipient_user=request.user
+            )
+            notification.is_read = True
+            notification.save()
+        except Notification.DoesNotExist:
+            pass
     
     # Get unread count
-    unread_count = notifications.filter(is_read=False).count()
+    unread_count = Notification.objects.filter(
+        Q(recipient_user=request.user) |
+        Q(recipient_type='all') |
+        Q(recipient_type='admin'),
+        is_read=False
+    ).count()
     
     context = {
         'notifications': notifications,
@@ -1760,6 +1869,13 @@ def pos_create_order(request):
                 customer.loyalty_points += int(total / 10)  # 1 point per $10 spent
                 customer.save()
             
+            # Notify admins about new POS order
+            try:
+                from .notifications import create_order_notification
+                create_order_notification(order, event_type='created')
+            except Exception:
+                pass
+            
             return JsonResponse({
                 'success': True,
                 'order_id': order.id,
@@ -1869,14 +1985,18 @@ def notifications_api(request):
     notification_type = request.GET.get('type', 'all')
     limit = int(request.GET.get('limit', 20))
     
-    notifications = Notification.objects.filter(recipient_user=request.user)
+    notifications = Notification.objects.filter(
+        Q(recipient_user=request.user) |
+        Q(recipient_type='all') |
+        Q(recipient_type='admin')
+    )
     
     if notification_type == 'unread':
         notifications = notifications.filter(is_read=False)
     elif notification_type != 'all':
         notifications = notifications.filter(notification_type=notification_type)
     
-    notifications = notifications[:limit]
+    notifications = notifications.order_by('-created_at')[:limit]
     
     data = [{
         'id': n.id,
@@ -1899,7 +2019,12 @@ def notifications_api(request):
 def mark_notification_read(request, notification_id):
     """Mark a single notification as read"""
     try:
-        notification = Notification.objects.get(id=notification_id, recipient_user=request.user)
+        notification = Notification.objects.get(
+            Q(recipient_user=request.user) |
+            Q(recipient_type='all') |
+            Q(recipient_type='admin'),
+            id=notification_id
+        )
         notification.mark_as_read()
         return JsonResponse({'success': True})
     except Notification.DoesNotExist:
@@ -1910,14 +2035,24 @@ def mark_notification_read(request, notification_id):
 @require_POST
 def mark_all_notifications_read(request):
     """Mark all notifications as read for the current user"""
-    count = Notification.objects.filter(recipient_user=request.user, is_read=False).update(is_read=True)
+    count = Notification.objects.filter(
+        Q(recipient_user=request.user) |
+        Q(recipient_type='all') |
+        Q(recipient_type='admin'),
+        is_read=False
+    ).update(is_read=True)
     return JsonResponse({'success': True, 'count': count})
 
 
 @login_required
 def notification_count(request):
     """Get unread notification count"""
-    count = Notification.objects.filter(recipient_user=request.user, is_read=False).count()
+    count = Notification.objects.filter(
+        Q(recipient_user=request.user) |
+        Q(recipient_type='all') |
+        Q(recipient_type='admin'),
+        is_read=False
+    ).count()
     return JsonResponse({'count': count})
 
 
