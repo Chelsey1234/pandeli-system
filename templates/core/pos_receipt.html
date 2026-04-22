@@ -110,9 +110,7 @@
         <p><strong>Order #:</strong> {{ order.order_number }}</p>
         <p><strong>Date:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</p>
         <p><strong>Cashier:</strong> {% if order.created_by %}{% if order.created_by.get_full_name %}{{ order.created_by.get_full_name }}{% else %}{{ order.created_by.username }}{% endif %}{% else %}—{% endif %}</p>
-        <p><strong>Customer:</strong>
-            {% if order.customer %}{{ order.customer.name }}{% else %}Walk-in Customer{% endif %}
-        </p>
+        <p><strong>Customer:</strong> {{ customer_name }}</p>
         <p><strong>Payment:</strong> {{ order.get_payment_method_display }}</p>
     </div>
 

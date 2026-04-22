@@ -2013,7 +2013,30 @@ def pos_receipt(request, order_id):
     View to display/print receipt
     """
     order = get_object_or_404(Order, id=order_id)
-    return render(request, 'core/pos_receipt.html', {'order': order})
+
+    # Safely resolve customer name — handles UUID customer_id from mobile app
+    customer_name = 'Walk-in Customer'
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT customer_id FROM core_order WHERE id = %s", [order_id])
+            row = cursor.fetchone()
+            if row and row[0]:
+                try:
+                    cid = int(row[0])
+                    from .models import Customer
+                    customer = Customer.objects.filter(pk=cid).first()
+                    if customer:
+                        customer_name = customer.name
+                except (ValueError, TypeError):
+                    pass
+    except Exception:
+        pass
+
+    return render(request, 'core/pos_receipt.html', {
+        'order': order,
+        'customer_name': customer_name,
+    })
 
 @login_required
 def notifications_api(request):
