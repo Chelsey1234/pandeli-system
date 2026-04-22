@@ -80,7 +80,7 @@
         </form>
         {% endif %}
 
-        <a href="{% url 'pos_receipt' order.id %}" target="_blank" class="btn-ghost">
+        <a href="{% url 'pos_receipt' order.id %}?return_url=orders" target="_blank" class="btn-ghost">
             <i class="fas fa-print"></i> Print Receipt
         </a>
     </div>

@@ -194,11 +194,15 @@ function handleClose() {
     window.close();
     
     // If window.close() didn't work (page was navigated to directly),
-    // redirect back to POS page after a short delay
+    // redirect back to the appropriate page after a short delay
     setTimeout(function() {
         // Check if window is still open (close() failed)
         if (!window.closed) {
+            {% if return_url == 'orders' %}
+            window.location.href = '{% url "order_list" %}';
+            {% else %}
             window.location.href = '{% url "pos" %}';
+            {% endif %}
         }
     }, 100);
 }

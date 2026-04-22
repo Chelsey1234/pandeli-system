@@ -2044,9 +2044,13 @@ def pos_receipt(request, order_id):
     except Exception:
         pass
 
+    # Get return URL from query parameter (default to POS page)
+    return_url = request.GET.get('return_url', 'pos')
+    
     return render(request, 'core/pos_receipt.html', {
         'order': order,
         'customer_name': customer_name,
+        'return_url': return_url,
     })
 
 @login_required
