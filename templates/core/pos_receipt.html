@@ -183,9 +183,25 @@
     <!-- Buttons -->
     <div class="no-print">
         <button class="btn btn-primary" onclick="window.print()">Print Receipt</button>
-        <button class="btn btn-secondary" onclick="window.close()">Close</button>
+        <button class="btn btn-secondary" onclick="handleClose()">Close</button>
     </div>
 
 </div>
+
+<script>
+function handleClose() {
+    // Try to close the window (works if opened via window.open)
+    window.close();
+    
+    // If window.close() didn't work (page was navigated to directly),
+    // redirect back to POS page after a short delay
+    setTimeout(function() {
+        // Check if window is still open (close() failed)
+        if (!window.closed) {
+            window.location.href = '{% url "pos" %}';
+        }
+    }, 100);
+}
+</script>
 </body>
 </html>
