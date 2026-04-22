@@ -200,7 +200,14 @@ document.addEventListener('click', function(e) {
                 {% empty %}
                     {% if order.product_name %}
                     <tr>
-                        <td class="font-medium">{{ order.product_name }}</td>
+                        <td class="font-medium">
+                            <div class="flex items-center gap-3">
+                                {% if order.product_image %}
+                                <img src="{{ order.product_image }}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" style="border:1px solid #ecddd5;" onerror="this.style.display='none'">
+                                {% endif %}
+                                {{ order.product_name }}
+                            </div>
+                        </td>
                         <td>—</td>
                         <td class="muted">—</td>
                         <td class="font-semibold">{{ order.total|peso }}</td>

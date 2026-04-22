@@ -63,7 +63,23 @@
                         </span>
                     </td>
                     <td>{{ order.customer.name|default:"—" }}</td>
-                    <td class="muted">{{ order.items.count }}</td>
+                    <td class="muted">
+                        {% with item_count=order.items.count %}
+                        {% if item_count > 0 %}
+                            {{ item_count }}
+                        {% elif order.product_name %}
+                            <span title="{{ order.product_name }}">
+                                {% if "items)" in order.product_name %}
+                                    {{ order.product_name }}
+                                {% else %}
+                                    1 — {{ order.product_name|truncatechars:20 }}
+                                {% endif %}
+                            </span>
+                        {% else %}
+                            —
+                        {% endif %}
+                        {% endwith %}
+                    </td>
                     <td class="font-semibold">{{ order.total|peso }}</td>
                     <td>
                         <span class="pill
