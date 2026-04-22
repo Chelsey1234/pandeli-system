@@ -2022,7 +2022,13 @@ def mark_all_notifications_read(request):
 
 @login_required
 def notification_count(request):
-    """Get unread notification count"""
+    """Get unread notification count — also catches any new orders that slipped through"""
+    # Check for orders that have no notification yet (e.g. inserted directly via Supabase)
+    try:
+        _create_missing_order_notifications()
+    except Exception:
+        pass
+
     count = Notification.objects.filter(
         Q(recipient_user=request.user) |
         Q(recipient_type='all') |
@@ -2030,6 +2036,49 @@ def notification_count(request):
         is_read=False
     ).count()
     return JsonResponse({'count': count})
+
+
+def _create_missing_order_notifications():
+    """
+    Find orders that have no 'new order' notification and create one.
+    Runs on every notification poll so app orders inserted via Supabase
+    are caught within 15 seconds.
+    """
+    from .notifications import NotificationService
+
+    # Get IDs of orders that already have a new-order notification
+    notified_order_ids = set(
+        Notification.objects.filter(
+            notification_type='order',
+            title__startswith='🛒 New Order #'
+        ).values_list('link', flat=True)
+    )
+    # Links are like /orders/123/ — extract the pk
+    notified_pks = set()
+    for link in notified_order_ids:
+        try:
+            pk = int(link.strip('/').split('/')[-1])
+            notified_pks.add(pk)
+        except (ValueError, TypeError):
+            pass
+
+    # Find orders created in the last 24 hours that have no notification
+    from django.utils import timezone
+    from datetime import timedelta
+    cutoff = timezone.now() - timedelta(hours=24)
+    new_orders = Order.objects.filter(
+        created_at__gte=cutoff
+    ).exclude(pk__in=notified_pks)
+
+    for order in new_orders:
+        NotificationService.notify_admins(
+            title=f"🛒 New Order #{order.order_number}",
+            message=f"New {order.get_order_type_display()} order received. Total: ₱{order.total}",
+            notification_type='order',
+            priority='high',
+            link=f'/orders/{order.pk}/',
+            action_text='View Order',
+        )
 
 
 @login_required
