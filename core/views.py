@@ -2119,3 +2119,178 @@ def index(request):
         return redirect('dashboard')
     return redirect('login')
 
+
+# ========== USER MANAGEMENT VIEWS (admin/manager only) ==========
+
+def _require_admin(request):
+    """Return True if the user is allowed to manage other users."""
+    if request.user.is_superuser:
+        return True
+    try:
+        return request.user.profile.role in ('admin', 'manager')
+    except Exception:
+        return False
+
+
+@login_required
+def user_list(request):
+    if not _require_admin(request):
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+
+    from django.contrib.auth.models import User as AuthUser
+    users = AuthUser.objects.select_related('profile').order_by('username')
+
+    # Search
+    q = request.GET.get('q', '').strip()
+    if q:
+        users = users.filter(
+            Q(username__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(email__icontains=q)
+        )
+
+    # Role filter
+    role_filter = request.GET.get('role', '')
+    if role_filter:
+        users = users.filter(profile__role=role_filter)
+
+    return render(request, 'core/user_list.html', {
+        'users': users,
+        'role_choices': UserProfile.ROLE_CHOICES,
+        'q': q,
+        'role_filter': role_filter,
+        'role_matrix': [
+            # (module, [admin, manager, cashier, staff, production_admin])
+            ('Dashboard',        [True,  True,  False, False, False]),
+            ('Orders',           [True,  True,  True,  True,  True ]),
+            ('POS',              [True,  True,  True,  False, False]),
+            ('Products',         [True,  True,  True,  False, True ]),
+            ('Inventory',        [True,  True,  False, False, True ]),
+            ('Suppliers',        [True,  True,  False, False, False]),
+            ('Sales Report',     [True,  True,  False, False, False]),
+            ('Cost Analytics',   [True,  True,  False, False, False]),
+            ('Forecast',         [True,  True,  False, False, False]),
+            ('Import / Export',  [True,  True,  False, False, False]),
+            ('User Management',  [True,  False, False, False, False]),
+            ('Notifications',    [True,  True,  True,  True,  True ]),
+        ],
+    })
+
+
+@login_required
+def user_create(request):
+    if not _require_admin(request):
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+
+    from .forms import UserCreateForm
+    from django.contrib.auth.models import User as AuthUser
+
+    if request.method == 'POST':
+        form = UserCreateForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.set_password(form.cleaned_data['password'])
+            user.save()
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            profile.role = form.cleaned_data['role']
+            profile.phone = form.cleaned_data.get('phone', '')
+            profile.save()
+            messages.success(request, f'User "{user.username}" created successfully.')
+            return redirect('user_list')
+    else:
+        form = UserCreateForm()
+
+    return render(request, 'core/user_form.html', {'form': form, 'action': 'Create'})
+
+
+@login_required
+def user_edit(request, pk):
+    if not _require_admin(request):
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+
+    from django.contrib.auth.models import User as AuthUser
+    from .forms import UserEditForm
+
+    target_user = get_object_or_404(AuthUser, pk=pk)
+
+    # Prevent non-superusers from editing superusers
+    if target_user.is_superuser and not request.user.is_superuser:
+        messages.error(request, 'You cannot edit a superuser account.')
+        return redirect('user_list')
+
+    profile, _ = UserProfile.objects.get_or_create(user=target_user)
+
+    if request.method == 'POST':
+        form = UserEditForm(request.POST, instance=target_user)
+        if form.is_valid():
+            user = form.save(commit=False)
+            new_pw = form.cleaned_data.get('new_password')
+            if new_pw:
+                user.set_password(new_pw)
+            user.save()
+            profile.role = form.cleaned_data['role']
+            profile.phone = form.cleaned_data.get('phone', '')
+            profile.save()
+            messages.success(request, f'User "{user.username}" updated successfully.')
+            return redirect('user_list')
+    else:
+        form = UserEditForm(instance=target_user, initial={
+            'role': profile.role,
+            'phone': profile.phone,
+        })
+
+    return render(request, 'core/user_form.html', {
+        'form': form,
+        'action': 'Edit',
+        'target_user': target_user,
+        'profile': profile,
+    })
+
+
+@login_required
+@require_POST
+def user_delete(request, pk):
+    if not _require_admin(request):
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+
+    from django.contrib.auth.models import User as AuthUser
+    target_user = get_object_or_404(AuthUser, pk=pk)
+
+    # Cannot delete yourself or a superuser (unless you are one)
+    if target_user == request.user:
+        messages.error(request, 'You cannot delete your own account.')
+        return redirect('user_list')
+    if target_user.is_superuser and not request.user.is_superuser:
+        messages.error(request, 'You cannot delete a superuser account.')
+        return redirect('user_list')
+
+    username = target_user.username
+    target_user.delete()
+    messages.success(request, f'User "{username}" deleted.')
+    return redirect('user_list')
+
+
+@login_required
+@require_POST
+def user_toggle_active(request, pk):
+    if not _require_admin(request):
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+
+    from django.contrib.auth.models import User as AuthUser
+    target_user = get_object_or_404(AuthUser, pk=pk)
+
+    if target_user == request.user:
+        messages.error(request, 'You cannot deactivate your own account.')
+        return redirect('user_list')
+
+    target_user.is_active = not target_user.is_active
+    target_user.save(update_fields=['is_active'])
+    state = 'activated' if target_user.is_active else 'deactivated'
+    messages.success(request, f'User "{target_user.username}" {state}.')
+    return redirect('user_list')

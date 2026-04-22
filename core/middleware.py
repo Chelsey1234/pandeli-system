@@ -43,6 +43,20 @@ class LoginRequiredMiddleware:
                     self._set_no_cache_headers(response)
                     return response
 
+        # Restrict /users/ to admin and manager roles only
+        if request.path.startswith('/users/'):
+            user = request.user
+            is_allowed = user.is_superuser
+            if not is_allowed:
+                try:
+                    is_allowed = user.profile.role in ('admin', 'manager')
+                except Exception:
+                    pass
+            if not is_allowed:
+                response = redirect('dashboard')
+                self._set_no_cache_headers(response)
+                return response
+
         response = self.get_response(request)
         # Prevent protected content from being cached,
         # so browser back after logout won't reveal prior pages.

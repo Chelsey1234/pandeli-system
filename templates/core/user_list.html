@@ -1,0 +1,171 @@
+{% extends 'core/base.html' %}
+
+{% block title %}User Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="pg-heading"><i class="fas fa-users mr-2" style="color:#C98A6B;"></i>User Management</h2>
+    <a href="{% url 'user_create' %}" class="btn-primary">
+        <i class="fas fa-user-plus"></i> Add User
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <form method="get" class="flex flex-wrap gap-3 items-end w-full">
+        <div class="flex-1 min-w-[180px]">
+            <label class="form-label">Search</label>
+            <input type="text" name="q" value="{{ q }}" placeholder="Name, username, email…" class="form-input">
+        </div>
+        <div class="min-w-[160px]">
+            <label class="form-label">Role</label>
+            <select name="role" class="form-input">
+                <option value="">All Roles</option>
+                {% for val, label in role_choices %}
+                <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex gap-2">
+            <button type="submit" class="btn-primary"><i class="fas fa-filter"></i> Filter</button>
+            <a href="{% url 'user_list' %}" class="btn-secondary"><i class="fas fa-times"></i> Clear</a>
+        </div>
+    </form>
+</div>
+
+<!-- Role access reference -->
+<div class="card mb-4 overflow-hidden">
+    <div class="card-header flex items-center gap-2 cursor-pointer select-none"
+         onclick="document.getElementById('roleRef').classList.toggle('hidden')">
+        <i class="fas fa-shield-alt" style="color:#C98A6B;"></i>
+        <span class="card-title">Role Access Reference</span>
+        <i class="fas fa-chevron-down ml-auto text-xs" style="color:#a0856e;"></i>
+    </div>
+    <div id="roleRef" class="hidden overflow-x-auto">
+        <table class="w-full text-xs">
+            <thead>
+                <tr style="background:#fdf5f0;">
+                    <th class="px-4 py-2 text-left font-semibold" style="color:#7C4A2D;">Module</th>
+                    <th class="px-4 py-2 text-center font-semibold" style="color:#7C4A2D;">Admin</th>
+                    <th class="px-4 py-2 text-center font-semibold" style="color:#7C4A2D;">Manager</th>
+                    <th class="px-4 py-2 text-center font-semibold" style="color:#7C4A2D;">Cashier</th>
+                    <th class="px-4 py-2 text-center font-semibold" style="color:#7C4A2D;">Staff</th>
+                    <th class="px-4 py-2 text-center font-semibold" style="color:#7C4A2D;">Production Admin</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y" style="border-color:#faf0ea;">
+                {% for module, perms in role_matrix %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-2 font-medium" style="color:#5c3520;">{{ module }}</td>
+                    {% for has_access in perms %}
+                    <td class="px-4 py-2 text-center">
+                        {% if has_access %}
+                        <i class="fas fa-check-circle" style="color:#276749;"></i>
+                        {% else %}
+                        <i class="fas fa-times-circle text-gray-300"></i>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Users table -->
+<div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            {% if u.profile.profile_picture %}
+                            <img src="{{ u.profile.profile_picture.url }}" class="w-8 h-8 rounded-full object-cover" style="border:1px solid #ecddd5;">
+                            {% else %}
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                 style="background:#C98A6B;">
+                                {{ u.first_name|first|upper }}{{ u.last_name|first|upper }}
+                            </div>
+                            {% endif %}
+                            <span class="font-medium body-text">
+                                {{ u.get_full_name|default:u.username }}
+                                {% if u == request.user %}
+                                <span class="text-xs ml-1" style="color:#C98A6B;">(you)</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="muted">{{ u.username }}</td>
+                    <td class="muted">{{ u.email|default:"—" }}</td>
+                    <td>
+                        {% with role=u.profile.role %}
+                        <span class="pill
+                            {% if role == 'admin' %}pill-red
+                            {% elif role == 'manager' %}pill-purple
+                            {% elif role == 'cashier' %}pill-blue
+                            {% elif role == 'production_admin' %}pill-orange
+                            {% else %}pill-gray{% endif %}">
+                            {{ u.profile.get_role_display }}
+                        </span>
+                        {% endwith %}
+                    </td>
+                    <td class="muted">{{ u.profile.phone|default:"—" }}</td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="pill pill-green">Active</span>
+                        {% else %}
+                        <span class="pill pill-red">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td class="muted">{{ u.date_joined|date:"M d, Y" }}</td>
+                    <td>
+                        <div class="flex gap-1">
+                            <a href="{% url 'user_edit' u.pk %}" class="btn-icon btn-icon-blue" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% if u != request.user %}
+                            <form method="post" action="{% url 'user_toggle_active' u.pk %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="btn-icon {% if u.is_active %}btn-icon-yellow{% else %}btn-icon-green{% endif %}"
+                                        title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %}"
+                                        onclick="return confirm('{% if u.is_active %}Deactivate{% else %}Activate{% endif %} {{ u.username }}?')">
+                                    <i class="fas {% if u.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                                </button>
+                            </form>
+                            {% if not u.is_superuser or request.user.is_superuser %}
+                            <form method="post" action="{% url 'user_delete' u.pk %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-icon btn-icon-red" title="Delete"
+                                        onclick="return confirm('Permanently delete user {{ u.username }}? This cannot be undone.')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center py-10 muted">No users found</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

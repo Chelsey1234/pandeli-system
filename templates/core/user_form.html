@@ -1,0 +1,155 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ action }} User{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="pg-heading">
+        <i class="fas fa-user-{% if action == 'Create' %}plus{% else %}edit{% endif %} mr-2" style="color:#C98A6B;"></i>
+        {{ action }} User
+    </h2>
+    <a href="{% url 'user_list' %}" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="max-w-2xl mx-auto">
+    <div class="card overflow-hidden">
+        <div class="card-header">
+            <span class="card-title">
+                {% if action == 'Edit' %}Editing: {{ target_user.username }}{% else %}New User Account{% endif %}
+            </span>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" class="space-y-5">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="px-4 py-3 rounded-xl text-sm" style="background:#fff5f5;color:#9b2c2c;border:1px solid #fed7d7;">
+                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Account info -->
+                <div>
+                    <h3 class="text-sm font-semibold mb-3" style="color:#7C4A2D;border-bottom:1px solid #faf0ea;padding-bottom:6px;">
+                        <i class="fas fa-id-card mr-1"></i> Account Information
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Username <span style="color:#e53e3e;">*</span></label>
+                            {{ form.username }}
+                            {% if form.username.errors %}<p class="text-xs mt-1" style="color:#e53e3e;">{{ form.username.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="form-label">Email</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<p class="text-xs mt-1" style="color:#e53e3e;">{{ form.email.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="form-label">First Name</label>
+                            {{ form.first_name }}
+                        </div>
+                        <div>
+                            <label class="form-label">Last Name</label>
+                            {{ form.last_name }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role & contact -->
+                <div>
+                    <h3 class="text-sm font-semibold mb-3" style="color:#7C4A2D;border-bottom:1px solid #faf0ea;padding-bottom:6px;">
+                        <i class="fas fa-shield-alt mr-1"></i> Role & Access
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Role <span style="color:#e53e3e;">*</span></label>
+                            {{ form.role }}
+                            {% if form.role.errors %}<p class="text-xs mt-1" style="color:#e53e3e;">{{ form.role.errors.0 }}</p>{% endif %}
+                            <p class="text-xs mt-1" style="color:#a0856e;" id="roleHint"></p>
+                        </div>
+                        <div>
+                            <label class="form-label">Phone</label>
+                            {{ form.phone }}
+                        </div>
+                    </div>
+
+                    <!-- Role descriptions -->
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs" style="color:#8a6a5a;">
+                        <div class="flex items-start gap-2 px-3 py-2 rounded-lg" style="background:#fdf5f0;">
+                            <span class="pill pill-red mt-0.5" style="font-size:10px;padding:1px 6px;flex-shrink:0;">Admin</span>
+                            Full access — users, products, orders, analytics, settings
+                        </div>
+                        <div class="flex items-start gap-2 px-3 py-2 rounded-lg" style="background:#fdf5f0;">
+                            <span class="pill pill-purple mt-0.5" style="font-size:10px;padding:1px 6px;flex-shrink:0;">Manager</span>
+                            Full access except user management
+                        </div>
+                        <div class="flex items-start gap-2 px-3 py-2 rounded-lg" style="background:#fdf5f0;">
+                            <span class="pill pill-blue mt-0.5" style="font-size:10px;padding:1px 6px;flex-shrink:0;">Cashier</span>
+                            POS, orders, products view
+                        </div>
+                        <div class="flex items-start gap-2 px-3 py-2 rounded-lg" style="background:#fdf5f0;">
+                            <span class="pill pill-gray mt-0.5" style="font-size:10px;padding:1px 6px;flex-shrink:0;">Staff</span>
+                            Basic access — orders and products
+                        </div>
+                        <div class="flex items-start gap-2 px-3 py-2 rounded-lg" style="background:#fdf5f0;">
+                            <span class="pill pill-orange mt-0.5" style="font-size:10px;padding:1px 6px;flex-shrink:0;">Production Admin</span>
+                            Kitchen only — orders, inventory, products
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <h3 class="text-sm font-semibold mb-3" style="color:#7C4A2D;border-bottom:1px solid #faf0ea;padding-bottom:6px;">
+                        <i class="fas fa-lock mr-1"></i> Password
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% if action == 'Create' %}
+                        <div>
+                            <label class="form-label">Password <span style="color:#e53e3e;">*</span></label>
+                            {{ form.password }}
+                            {% if form.password.errors %}<p class="text-xs mt-1" style="color:#e53e3e;">{{ form.password.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="form-label">Confirm Password <span style="color:#e53e3e;">*</span></label>
+                            {{ form.confirm_password }}
+                            {% if form.confirm_password.errors %}<p class="text-xs mt-1" style="color:#e53e3e;">{{ form.confirm_password.errors.0 }}</p>{% endif %}
+                        </div>
+                        {% else %}
+                        <div>
+                            <label class="form-label">New Password</label>
+                            {{ form.new_password }}
+                            <p class="text-xs mt-1" style="color:#a0856e;">{{ form.new_password.help_text }}</p>
+                            {% if form.new_password.errors %}<p class="text-xs mt-1" style="color:#e53e3e;">{{ form.new_password.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="form-label">Confirm New Password</label>
+                            {{ form.confirm_password }}
+                            {% if form.confirm_password.errors %}<p class="text-xs mt-1" style="color:#e53e3e;">{{ form.confirm_password.errors.0 }}</p>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if action == 'Edit' %}
+                <!-- Active status -->
+                <div class="flex items-center gap-3 px-4 py-3 rounded-xl" style="background:#fdf5f0;border:1px solid #ecddd5;">
+                    {{ form.is_active }}
+                    <label class="text-sm font-medium" style="color:#5c3520;">
+                        Account Active
+                        <span class="text-xs font-normal ml-1" style="color:#a0856e;">— inactive users cannot log in</span>
+                    </label>
+                </div>
+                {% endif %}
+
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> {{ action }} User
+                    </button>
+                    <a href="{% url 'user_list' %}" class="btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
