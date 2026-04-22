@@ -53,7 +53,7 @@
     </div>
     <div class="card">
         <div class="card-header"><span class="card-title">Sales by Category</span></div>
-        <div class="card-body"><canvas id="categoryChart" height="300"></canvas></div>
+        <div class="card-body" style="height:300px;"><canvas id="categoryChart"></canvas></div>
     </div>
 </div>
 
@@ -168,31 +168,51 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Chart 2 — Sales by Category Polar Area with RdYlBu
+    // Chart 2 — Sales by Category Horizontal Bar
     var ctx2 = document.getElementById('categoryChart');
     var catLabels = [{% for cat in sales_by_category %}'{{ cat.product__category|title }}'{% if not forloop.last %},{% endif %}{% endfor %}];
     var catValues = [{% for cat in sales_by_category %}{{ cat.total }}{% if not forloop.last %},{% endif %}{% endfor %}];
     if (ctx2 && catLabels.length) {
         var catColors = rdylbu(catLabels.length);
         new Chart(ctx2.getContext('2d'), {
-            type: 'polarArea',
+            type: 'bar',
             data: {
                 labels: catLabels,
                 datasets: [{
+                    label: 'Sales (₱)',
                     data: catValues,
                     backgroundColor: catColors.map(function(c) { return c.replace(')', ',0.8)').replace('rgb', 'rgba'); }),
                     borderColor: catColors,
-                    borderWidth: 2,
+                    borderWidth: 1.5,
+                    borderRadius: 6,
                 }]
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
-                animation: { animateRotate: true, animateScale: true, duration: 800 },
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 700, easing: 'easeOutQuart' },
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#7C4A2D', font: { size: 11 }, usePointStyle: true, padding: 12 } },
-                    tooltip: Object.assign({}, tip, { callbacks: { label: function(ctx) { return ' ₱' + ctx.raw.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); } } })
+                    legend: { display: false },
+                    tooltip: Object.assign({}, tip, {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ' ₱' + ctx.raw.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2});
+                            }
+                        }
+                    })
                 },
-                scales: { r: { ticks: { color: '#C98A6B', backdropColor: 'transparent', font: { size: 10 } }, grid: { color: 'rgba(201,138,107,0.2)' } } }
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { callback: function(v) { return '₱' + v.toLocaleString('en-PH'); }, color: '#C98A6B', font: { size: 10 } },
+                        grid: { color: 'rgba(201,138,107,0.1)' }
+                    },
+                    y: {
+                        ticks: { color: '#7C4A2D', font: { size: 11 } },
+                        grid: { display: false }
+                    }
+                }
             }
         });
     }
