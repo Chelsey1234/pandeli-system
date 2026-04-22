@@ -42,36 +42,47 @@ class NotificationService:
     
     @staticmethod
     def notify_admins(title, message, notification_type='system', priority='medium', link='', action_text=''):
-        """Send notification to all admin users"""
-        admins = User.objects.filter(is_superuser=True)
-        for admin in admins:
+        """Send notification to all admin/manager/staff users who manage the web dashboard"""
+        from .models import UserProfile
+        from django.contrib.auth.models import User
+
+        # Collect all users who should see admin notifications:
+        # superusers + users with admin/production_admin/manager/cashier roles
+        user_ids = set()
+
+        # Superusers
+        for uid in User.objects.filter(is_superuser=True).values_list('id', flat=True):
+            user_ids.add(uid)
+
+        # Staff roles
+        for uid in UserProfile.objects.filter(
+            role__in=['admin', 'production_admin', 'manager', 'cashier', 'staff']
+        ).values_list('user_id', flat=True):
+            user_ids.add(uid)
+
+        for user in User.objects.filter(id__in=user_ids, is_active=True):
             NotificationService.create_notification(
                 title=title,
                 message=message,
                 notification_type=notification_type,
                 recipient_type='admin',
-                recipient_user=admin,
+                recipient_user=user,
                 priority=priority,
                 link=link,
                 action_text=action_text
             )
-    
+
     @staticmethod
     def notify_staff(title, message, notification_type='system', priority='medium', link='', action_text=''):
-        """Send notification to all staff users"""
-        from .models import UserProfile
-        staff_profiles = UserProfile.objects.filter(role__in=['staff', 'cashier', 'manager'])
-        for profile in staff_profiles:
-            NotificationService.create_notification(
-                title=title,
-                message=message,
-                notification_type=notification_type,
-                recipient_type='staff',
-                recipient_user=profile.user,
-                priority=priority,
-                link=link,
-                action_text=action_text
-            )
+        """Send notification to all staff users (alias for notify_admins for system messages)"""
+        NotificationService.notify_admins(
+            title=title,
+            message=message,
+            notification_type=notification_type,
+            priority=priority,
+            link=link,
+            action_text=action_text
+        )
     
     @staticmethod
     def notify_customer(customer, title, message, notification_type='order', priority='medium', link='', action_text=''):

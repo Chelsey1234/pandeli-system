@@ -1544,35 +1544,18 @@ def order_webhook(request):
         total = record.get('total') or body.get('total', 0)
         order_type = record.get('order_type') or body.get('order_type', 'online')
 
-        # Notify all staff users (admins, managers, cashiers, production admins)
-        from django.contrib.auth.models import User
-        staff_users = User.objects.filter(is_active=True).filter(
-            Q(is_staff=True) |
-            Q(is_superuser=True) |
-            Q(profile__role__in=['admin', 'production_admin', 'manager', 'cashier'])
-        ).distinct()
+        from .notifications import NotificationService
+        NotificationService.notify_admins(
+            title=f"🛒 New Order #{order_number}",
+            message=f"New {order_type} order received. Total: ₱{total}",
+            notification_type='order',
+            priority='high',
+            link='/orders/',
+            action_text='View Orders',
+        )
 
-        created_count = 0
-        for user in staff_users:
-            _, created = Notification.objects.get_or_create(
-                # Unique per order + recipient so retries don't duplicate
-                notification_type='order',
-                recipient_user=user,
-                link=f'/orders/',
-                title=f"🛒 New Order #{order_number}",
-                defaults={
-                    'message': f"New {order_type} order received. Total: ₱{total}",
-                    'recipient_type': 'admin',
-                    'priority': 'high',
-                    'is_read': False,
-                    'action_text': 'View Orders',
-                }
-            )
-            if created:
-                created_count += 1
-
-        _logger.info(f"order_webhook: order #{order_number} — {created_count} notifications created")
-        return JsonResponse({'status': 'ok', 'notifications_created': created_count})
+        _logger.info(f"order_webhook: notifications sent for order #{order_number}")
+        return JsonResponse({'status': 'ok'})
 
     except Exception as e:
         _logger.error(f"order_webhook error: {e}", exc_info=True)
