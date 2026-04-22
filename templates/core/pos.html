@@ -353,6 +353,8 @@ function processPayment() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
+            // Clear cart before redirecting
+            clearCart();
             alert('Order completed! Order #: ' + data.order_number);
             window.location.href = '{% url "pos_receipt" 0 %}'.replace('/0/', '/' + data.order_id + '/');
         } else { alert('Error: ' + data.error); }
