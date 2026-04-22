@@ -154,30 +154,14 @@ document.addEventListener('click', function(e) {
         </div>
     </div>
 
-    <!-- Customer Info -->
+    <!-- Notes (replaces Customer Information) -->
     <div class="card">
-        <div class="card-header"><span class="card-title">Customer Information</span></div>
+        <div class="card-header"><span class="card-title"><i class="fas fa-sticky-note mr-2" style="color:#C98A6B;"></i>Notes</span></div>
         <div class="card-body">
-            {% if customer %}
-            <dl class="space-y-3">
-                <div class="flex justify-between py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Name</dt><dd class="font-semibold body-text">{{ customer.name }}</dd>
-                </div>
-                <div class="flex justify-between py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Email</dt><dd class="muted-text">{{ customer.email }}</dd>
-                </div>
-                <div class="flex justify-between py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Phone</dt><dd class="muted-text">{{ customer.phone }}</dd>
-                </div>
-                <div class="flex justify-between py-1" style="border-bottom:1px solid #faf0ea;">
-                    <dt class="label-text">Address</dt><dd class="muted-text">{{ customer.address }}</dd>
-                </div>
-                <div class="flex justify-between py-1">
-                    <dt class="label-text">Loyalty Points</dt><dd class="body-text">{{ customer.loyalty_points }}</dd>
-                </div>
-            </dl>
+            {% if order.notes %}
+            <p class="body-text">{{ order.notes }}</p>
             {% else %}
-            <p class="muted-text italic">Online / Walk-in Customer</p>
+            <p class="muted-text italic">No notes for this order.</p>
             {% endif %}
         </div>
     </div>
@@ -244,13 +228,6 @@ document.addEventListener('click', function(e) {
         </table>
     </div>
 </div>
-
-{% if order.notes %}
-<div class="card">
-    <div class="card-header"><span class="card-title">Notes</span></div>
-    <div class="card-body"><p class="body-text">{{ order.notes }}</p></div>
-</div>
-{% endif %}
 
 <style>@media print { #sidebar, nav, .btn-primary, .btn-secondary, .btn-ghost { display:none !important; } }</style>
 {% endblock %}
