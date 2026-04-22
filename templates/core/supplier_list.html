@@ -71,16 +71,37 @@
                 <h5 class="modal-title card-title text-white">Add New Supplier</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-5 space-y-3">
-                <form id="addSupplierForm">
+            <div class="modal-body p-5">
+                <form id="addSupplierForm" class="space-y-3">
                     {% csrf_token %}
-                    <div><label class="form-label">Supplier Name</label><input type="text" name="name" required class="form-input"></div>
-                    <div><label class="form-label">Contact Person</label><input type="text" name="contact_person" class="form-input"></div>
-                    <div><label class="form-label">Email</label><input type="email" name="email" required class="form-input"></div>
-                    <div><label class="form-label">Phone</label><input type="text" name="phone" required class="form-input"></div>
-                    <div><label class="form-label">Address</label><textarea name="address" rows="2" required class="form-input"></textarea></div>
-                    <div><label class="form-label">Payment Terms</label><input type="text" name="payment_terms" placeholder="e.g., Net 30" class="form-input"></div>
-                    <div><label class="form-label">Tax ID</label><input type="text" name="tax_id" class="form-input"></div>
+                    <div>
+                        <label class="form-label">Supplier Name</label>
+                        <input type="text" name="name" required class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Contact Person</label>
+                        <input type="text" name="contact_person" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" required class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Phone</label>
+                        <input type="text" name="phone" required class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Address</label>
+                        <textarea name="address" rows="2" required class="form-input"></textarea>
+                    </div>
+                    <div>
+                        <label class="form-label">Payment Terms</label>
+                        <input type="text" name="payment_terms" placeholder="e.g., Net 30" class="form-input">
+                    </div>
+                    <div>
+                        <label class="form-label">Tax ID</label>
+                        <input type="text" name="tax_id" class="form-input">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer border-0 px-5 py-4 gap-2" style="background:#fdf5f0;">
