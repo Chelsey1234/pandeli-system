@@ -87,7 +87,10 @@ DATABASES = {
         'CONN_MAX_AGE': 0,  # Don't hold persistent connections — required for Supabase transaction pooler
         'OPTIONS': {
             'connect_timeout': 10,
-            'options': '-c default_transaction_isolation=read\ committed',
+            'keepalives': 1,
+            'keepalives_idle': 30,
+            'keepalives_interval': 10,
+            'keepalives_count': 5,
         },
     }
 }
