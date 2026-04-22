@@ -476,7 +476,7 @@ def confirm_order(request, pk):
                         old_stock = product.stock
                         product.stock -= item.quantity
                         product.save()
-                        
+
                         InventoryTransaction.objects.create(
                             product=product,
                             transaction_type='out',
@@ -487,7 +487,11 @@ def confirm_order(request, pk):
                             notes="Order confirmation",
                             created_by=request.user
                         )
-                        
+
+                        # Notify if low stock after deduction
+                        from .notifications import notify_if_low_stock, notify_if_material_low
+                        notify_if_low_stock(product)
+
                         for recipe in product.recipe.all():
                             material = recipe.raw_material
                             needed_qty = recipe.quantity * item.quantity
@@ -505,7 +509,8 @@ def confirm_order(request, pk):
                                     notes=f"Used for {product.name}",
                                     created_by=request.user
                                 )
-                    
+                                notify_if_material_low(material)
+
                     # Use raw update to avoid loading UUID customer FK
                     Order.objects.filter(pk=order.pk).update(status='confirmed')
                 
@@ -1878,7 +1883,7 @@ def pos_create_order(request):
                 old_stock = product.stock
                 product.stock -= quantity
                 product.save()
-                
+
                 # Record inventory transaction
                 InventoryTransaction.objects.create(
                     product=product,
@@ -1890,6 +1895,10 @@ def pos_create_order(request):
                     notes=f"POS sale",
                     created_by=request.user
                 )
+
+                # Notify if low stock after deduction
+                from .notifications import notify_if_low_stock, notify_if_material_low
+                notify_if_low_stock(product)
 
                 # Deduct raw materials based on recipe
                 for recipe in product.recipe.select_related('raw_material').all():
@@ -1909,6 +1918,7 @@ def pos_create_order(request):
                         notes=f"Used for POS sale: {product.name}",
                         created_by=request.user
                     )
+                    notify_if_material_low(material)
             
             # Update customer loyalty points (optional)
             if customer:

@@ -363,6 +363,10 @@ class OrderViewSet(viewsets.ModelViewSet):
                     created_by=request.user
                 )
 
+                # Notify if low stock
+                from .notifications import notify_if_low_stock, notify_if_material_low
+                notify_if_low_stock(product)
+
                 # Deduct raw materials based on recipe
                 for recipe in product.recipe.select_related('raw_material').all():
                     material = recipe.raw_material
@@ -382,6 +386,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                             notes=f'Used for {product.name}',
                             created_by=request.user
                         )
+                        notify_if_material_low(material)
 
             Order.objects.filter(pk=order.pk).update(status='confirmed')
 

@@ -117,22 +117,22 @@ class NotificationService:
 
 def check_low_stock_and_notify():
     """
-    Check for low stock items and create notifications
-    Run this periodically via cron job or Celery
+    Check for low stock items and create notifications.
+    Run this periodically via cron job or Celery.
     """
     notifications_created = 0
-    
+
     # Check products
     low_stock_products = Product.objects.filter(
         stock__lte=F('low_stock_threshold'),
         is_available=True
     )
-    
+
     for product in low_stock_products:
         title = f"Low Stock Alert: {product.name}"
         message = f"Product '{product.name}' has only {product.stock} units left (threshold: {product.low_stock_threshold})"
         link = f"/products/?search={product.code}"
-        
+
         NotificationService.notify_admins(
             title=title,
             message=message,
@@ -142,17 +142,17 @@ def check_low_stock_and_notify():
             action_text='View Product'
         )
         notifications_created += 1
-    
+
     # Check raw materials
     low_stock_materials = RawMaterial.objects.filter(
         stock_quantity__lte=F('low_stock_threshold')
     )
-    
+
     for material in low_stock_materials:
         title = f"Low Material Alert: {material.name}"
         message = f"Raw material '{material.name}' has only {material.stock_quantity} {material.unit} left"
         link = f"/inventory/?material={material.id}"
-        
+
         NotificationService.notify_admins(
             title=title,
             message=message,
@@ -162,8 +162,58 @@ def check_low_stock_and_notify():
             action_text='View Material'
         )
         notifications_created += 1
-    
+
     return notifications_created
+
+
+def notify_if_low_stock(product):
+    """
+    Fire a low-stock notification immediately after a product's stock is deducted.
+    Call this right after product.save() in any order/POS flow.
+    """
+    try:
+        if product.stock <= product.low_stock_threshold:
+            priority = 'high' if product.stock == 0 else 'medium'
+            title = f"{'Out of Stock' if product.stock == 0 else 'Low Stock'}: {product.name}"
+            message = (
+                f"'{product.name}' is {'out of stock' if product.stock == 0 else f'running low — only {product.stock} unit(s) left'}."
+                f" (threshold: {product.low_stock_threshold})"
+            )
+            NotificationService.notify_admins(
+                title=title,
+                message=message,
+                notification_type='stock',
+                priority=priority,
+                link=f"/products/?search={product.code}",
+                action_text='View Product'
+            )
+    except Exception:
+        pass  # Never let notification errors break the order flow
+
+
+def notify_if_material_low(material):
+    """
+    Fire a low-stock notification immediately after a raw material is deducted.
+    """
+    try:
+        if material.stock_quantity <= material.low_stock_threshold:
+            priority = 'high' if material.stock_quantity <= 0 else 'medium'
+            title = f"{'Out of Stock' if material.stock_quantity <= 0 else 'Low Stock'}: {material.name}"
+            message = (
+                f"Raw material '{material.name}' is "
+                f"{'depleted' if material.stock_quantity <= 0 else f'running low — only {material.stock_quantity} {material.unit} left'}."
+                f" (threshold: {material.low_stock_threshold})"
+            )
+            NotificationService.notify_admins(
+                title=title,
+                message=message,
+                notification_type='stock',
+                priority=priority,
+                link=f"/inventory/",
+                action_text='View Inventory'
+            )
+    except Exception:
+        pass
 
 
 def create_order_notification(order, event_type='created'):
