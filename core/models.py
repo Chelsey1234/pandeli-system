@@ -74,6 +74,9 @@ class Product(models.Model):
         # This prevents cases where stock is restored but the product
         # still appears as "Out of Stock" due to stale `is_available` value.
         self.is_available = (self.stock > 0) and (not self.is_archived)
+        # Auto-remove best seller flag when stock is low or zero
+        if self.stock <= self.low_stock_threshold:
+            self.is_best_seller = False
         super().save(*args, **kwargs)
     
     @property
