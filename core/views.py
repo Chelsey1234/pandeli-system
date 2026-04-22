@@ -2040,45 +2040,44 @@ def notification_count(request):
 
 def _create_missing_order_notifications():
     """
-    Find orders that have no 'new order' notification and create one.
-    Runs on every notification poll so app orders inserted via Supabase
-    are caught within 15 seconds.
+    Find orders that have no 'new order' notification and create one per staff user.
+    Uses get_or_create so it is safe to call repeatedly — no duplicates.
     """
-    from .notifications import NotificationService
-
-    # Get IDs of orders that already have a new-order notification
-    notified_order_ids = set(
-        Notification.objects.filter(
-            notification_type='order',
-            title__startswith='🛒 New Order #'
-        ).values_list('link', flat=True)
-    )
-    # Links are like /orders/123/ — extract the pk
-    notified_pks = set()
-    for link in notified_order_ids:
-        try:
-            pk = int(link.strip('/').split('/')[-1])
-            notified_pks.add(pk)
-        except (ValueError, TypeError):
-            pass
-
-    # Find orders created in the last 24 hours that have no notification
     from django.utils import timezone
     from datetime import timedelta
+    from django.contrib.auth.models import User as AuthUser
+    from .models import UserProfile
+
     cutoff = timezone.now() - timedelta(hours=24)
-    new_orders = Order.objects.filter(
-        created_at__gte=cutoff
-    ).exclude(pk__in=notified_pks)
+    new_orders = Order.objects.filter(created_at__gte=cutoff)
+    if not new_orders.exists():
+        return
+
+    # Collect all staff user IDs (same logic as notify_admins)
+    user_ids = set(AuthUser.objects.filter(is_superuser=True, is_active=True).values_list('id', flat=True))
+    user_ids |= set(UserProfile.objects.filter(
+        role__in=['admin', 'production_admin', 'manager', 'cashier', 'staff']
+    ).values_list('user_id', flat=True))
+    staff_users = list(AuthUser.objects.filter(id__in=user_ids, is_active=True))
 
     for order in new_orders:
-        NotificationService.notify_admins(
-            title=f"🛒 New Order #{order.order_number}",
-            message=f"New {order.get_order_type_display()} order received. Total: ₱{order.total}",
-            notification_type='order',
-            priority='high',
-            link=f'/orders/{order.pk}/',
-            action_text='View Order',
-        )
+        title = f"🛒 New Order #{order.order_number}"
+        link = f'/orders/{order.pk}/'
+        message = f"New {order.get_order_type_display()} order received. Total: ₱{order.total}"
+        for user in staff_users:
+            Notification.objects.get_or_create(
+                notification_type='order',
+                recipient_user=user,
+                link=link,
+                title=title,
+                defaults={
+                    'message': message,
+                    'recipient_type': 'admin',
+                    'priority': 'high',
+                    'is_read': False,
+                    'action_text': 'View Order',
+                }
+            )
 
 
 @login_required
