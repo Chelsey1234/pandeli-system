@@ -1313,7 +1313,9 @@ def bundle_add(request):
     description = request.POST.get('description', '')
     subtitle = request.POST.get('subtitle', '')
     item_count = int(request.POST.get('item_count', 1))
-    category = request.POST.get('category', '')
+    # Handle multiple categories (checkboxes)
+    categories = request.POST.getlist('categories')
+    category = ','.join(categories) if categories else ''
     order = int(request.POST.get('order', 0))
     image = request.FILES.get('image')
     try:
@@ -1344,7 +1346,8 @@ def bundle_edit(request, pk):
     bundle.subtitle = request.POST.get('subtitle', bundle.subtitle)
     bundle.description = request.POST.get('description', bundle.description)
     bundle.item_count = int(request.POST.get('item_count', bundle.item_count))
-    bundle.category = request.POST.get('category', bundle.category)
+    categories = request.POST.getlist('categories')
+    bundle.category = ','.join(categories) if categories else ''
     bundle.order = int(request.POST.get('order', bundle.order))
     image = request.FILES.get('image')
     if image:
@@ -1391,7 +1394,10 @@ def bundles_api(request):
         # Filter products by category if specified, else all products
         product_qs = Product.objects.filter(is_archived=False, is_available=True)
         if b.category:
-            product_qs = product_qs.filter(category=b.category)
+            # Support multiple categories (comma-separated)
+            cats = [c.strip() for c in b.category.split(',') if c.strip()]
+            if cats:
+                product_qs = product_qs.filter(category__in=cats)
         products = list(product_qs.values('id', 'name', 'price', 'category', 'description'))
         image_url = None
         if b.image:
@@ -1411,6 +1417,66 @@ def bundles_api(request):
             'products': products,
         })
     return JsonResponse(data, safe=False)
+
+@csrf_exempt
+def order_webhook(request):
+    """
+    Webhook endpoint called by Supabase when a new order is created.
+    Creates a notification for all staff/admin users.
+    Must be csrf_exempt because Supabase does not send a CSRF token.
+    """
+    import json as _json
+    import logging
+    _logger = logging.getLogger(__name__)
+
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'POST required'}, status=405)
+
+    try:
+        body = _json.loads(request.body)
+    except (_json.JSONDecodeError, Exception) as e:
+        _logger.error(f"order_webhook: invalid JSON body — {e}")
+        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+
+    try:
+        record = body.get('record', {})
+        order_number = record.get('order_number') or body.get('order_number', 'Unknown')
+        total = record.get('total') or body.get('total', 0)
+        order_type = record.get('order_type') or body.get('order_type', 'online')
+
+        # Notify all staff users (admins, managers, cashiers, production admins)
+        from django.contrib.auth.models import User
+        staff_users = User.objects.filter(is_active=True).filter(
+            Q(is_staff=True) |
+            Q(is_superuser=True) |
+            Q(profile__role__in=['admin', 'production_admin', 'manager', 'cashier'])
+        ).distinct()
+
+        created_count = 0
+        for user in staff_users:
+            _, created = Notification.objects.get_or_create(
+                # Unique per order + recipient so retries don't duplicate
+                notification_type='order',
+                recipient_user=user,
+                link=f'/orders/',
+                title=f"🛒 New Order #{order_number}",
+                defaults={
+                    'message': f"New {order_type} order received. Total: ₱{total}",
+                    'recipient_type': 'admin',
+                    'priority': 'high',
+                    'is_read': False,
+                    'action_text': 'View Orders',
+                }
+            )
+            if created:
+                created_count += 1
+
+        _logger.info(f"order_webhook: order #{order_number} — {created_count} notifications created")
+        return JsonResponse({'status': 'ok', 'notifications_created': created_count})
+
+    except Exception as e:
+        _logger.error(f"order_webhook error: {e}", exc_info=True)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 def app_features_api(request):
     features = AppFeature.objects.filter(is_active=True).order_by('order', '-created_at')

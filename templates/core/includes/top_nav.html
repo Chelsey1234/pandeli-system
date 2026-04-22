@@ -68,12 +68,11 @@
                     onmouseover="this.style.background='rgba(201,138,107,0.15)'"
                     onmouseout="this.style.background='transparent'">
                 <i class="fas fa-bell text-lg"></i>
-                {% if unread_notifications_count > 0 %}
-                <span class="absolute -top-0.5 -right-0.5 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
-                      style="background:#7C4A2D;">
-                    {{ unread_notifications_count }}
+                <span id="notifBadge"
+                      class="notification-badge absolute -top-0.5 -right-0.5 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                      style="background:#7C4A2D;{% if not unread_notifications_count %}display:none;{% endif %}">
+                    {{ unread_notifications_count|default:"0" }}
                 </span>
-                {% endif %}
             </button>
 
             <div id="notifDropdown"

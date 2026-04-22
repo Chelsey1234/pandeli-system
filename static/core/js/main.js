@@ -69,6 +69,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ========== NOTIFICATION MANAGER ==========
 const NotificationManager = {
+    _lastCount: null,
+
     markAllAsRead: function() {
         fetch('/api/notifications/mark-all-read/', {
             method: 'POST',
@@ -90,7 +92,7 @@ const NotificationManager = {
                 const badge = document.querySelector('.notification-badge');
                 if (badge) {
                     const count = parseInt(badge.textContent) - 1;
-                    if (count > 0) badge.textContent = count;
+                    if (count > 0) { badge.textContent = count; badge.style.display = 'flex'; }
                     else badge.style.display = 'none';
                 }
             }
@@ -102,13 +104,24 @@ const NotificationManager = {
         fetch('/api/notifications/count/')
             .then(r => r.json())
             .then(data => {
+                const count = data.count || 0;
                 const badge = document.querySelector('.notification-badge');
-                if (!badge) return;
-                if (data.count > 0) { badge.textContent = data.count; badge.style.display = 'inline'; }
-                else badge.style.display = 'none';
+                if (badge) {
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'flex' : 'none';
+                }
+                // Show toast when new notifications arrive (count increased)
+                if (NotificationManager._lastCount !== null && count > NotificationManager._lastCount) {
+                    const diff = count - NotificationManager._lastCount;
+                    showToast('🛒 ' + diff + ' new order notification' + (diff > 1 ? 's' : ''), 'info');
+                }
+                NotificationManager._lastCount = count;
             })
             .catch(e => console.error(e));
     }
 };
 
-setInterval(function() { NotificationManager.getCount(); }, 30000);
+// Poll every 15 seconds for near-real-time order notifications
+setInterval(function() { NotificationManager.getCount(); }, 15000);
+// Run once on load to set the initial count baseline
+document.addEventListener('DOMContentLoaded', function() { NotificationManager.getCount(); });
