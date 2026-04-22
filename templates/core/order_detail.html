@@ -80,7 +80,9 @@
         </form>
         {% endif %}
 
-        <button onclick="window.print()" class="btn-ghost"><i class="fas fa-print"></i> Print</button>
+        <a href="{% url 'pos_receipt' order.id %}" target="_blank" class="btn-ghost">
+            <i class="fas fa-print"></i> Print Receipt
+        </a>
     </div>
 </div>
 
