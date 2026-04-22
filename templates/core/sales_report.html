@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load custom_filters %}
 
 {% block title %}Sales Report{% endblock %}
 
@@ -32,7 +33,7 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
     <div class="card card-body">
         <p class="label-text mb-1">Total Sales</p>
-        <p class="text-2xl font-bold" style="color:#7C4A2D;">&#8369;{{ total_sales|floatformat:2 }}</p>
+        <p class="text-2xl font-bold" style="color:#7C4A2D;">{{ total_sales|peso }}</p>
     </div>
     <div class="card card-body">
         <p class="label-text mb-1">Total Orders</p>
@@ -40,7 +41,7 @@
     </div>
     <div class="card card-body">
         <p class="label-text mb-1">Average Order Value</p>
-        <p class="text-2xl font-bold" style="color:#7C4A2D;">&#8369;{{ average_order|floatformat:2 }}</p>
+        <p class="text-2xl font-bold" style="color:#7C4A2D;">{{ average_order|peso }}</p>
     </div>
 </div>
 
@@ -73,7 +74,7 @@
                 <tr>
                     <td class="font-medium">{{ product.product__name }}</td>
                     <td>{{ product.quantity }}</td>
-                    <td class="font-semibold">&#8369;{{ product.revenue|floatformat:2 }}</td>
+                    <td class="font-semibold">{{ product.revenue|peso }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="3" class="text-center py-8 muted">No sales data available</td></tr>
@@ -156,11 +157,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { position: 'top', labels: { color: '#7C4A2D', font: { size: 11 }, usePointStyle: true } },
-                    tooltip: Object.assign({}, tip, { callbacks: { label: function(ctx) { return ' ' + ctx.dataset.label + ': \u20B1' + ctx.raw.toFixed(2); } } })
+                    tooltip: Object.assign({}, tip, { callbacks: { label: function(ctx) { return ' ' + ctx.dataset.label + ': ₱' + ctx.raw.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); } } })
                 },
                 scales: {
-                    y:  { beginAtZero: true, position: 'left',  ticks: { callback: function(v) { return '\u20B1' + v; }, color: '#C98A6B' }, grid: { color: 'rgba(201,138,107,0.1)' } },
-                    y2: { beginAtZero: true, position: 'right', ticks: { callback: function(v) { return '\u20B1' + v; }, color: d3.interpolateRdYlBu(0.1) }, grid: { display: false } },
+                    y:  { beginAtZero: true, position: 'left',  ticks: { callback: function(v) { return '₱' + v.toLocaleString('en-PH'); }, color: '#C98A6B' }, grid: { color: 'rgba(201,138,107,0.1)' } },
+                    y2: { beginAtZero: true, position: 'right', ticks: { callback: function(v) { return '₱' + v.toLocaleString('en-PH'); }, color: d3.interpolateRdYlBu(0.1) }, grid: { display: false } },
                     x:  { ticks: { color: '#7C4A2D' }, grid: { display: false } }
                 }
             }
@@ -189,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 animation: { animateRotate: true, animateScale: true, duration: 800 },
                 plugins: {
                     legend: { position: 'bottom', labels: { color: '#7C4A2D', font: { size: 11 }, usePointStyle: true, padding: 12 } },
-                    tooltip: Object.assign({}, tip, { callbacks: { label: function(ctx) { return ' \u20B1' + ctx.raw.toFixed(2); } } })
+                    tooltip: Object.assign({}, tip, { callbacks: { label: function(ctx) { return ' ₱' + ctx.raw.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); } } })
                 },
                 scales: { r: { ticks: { color: '#C98A6B', backdropColor: 'transparent', font: { size: 10 } }, grid: { color: 'rgba(201,138,107,0.2)' } } }
             }

@@ -1,4 +1,5 @@
 {% extends 'core/base.html' %}
+{% load custom_filters %}
 
 {% block title %}Order — {{ order.order_number }}{% endblock %}
 
@@ -99,8 +100,8 @@
                 <tr>
                     <td class="font-medium">{{ item.product.name }}</td>
                     <td>{{ item.quantity }}</td>
-                    <td class="muted">&#8369;{{ item.price|floatformat:2 }}</td>
-                    <td class="font-semibold">&#8369;{{ item.subtotal|floatformat:2 }}</td>
+                    <td class="muted">{{ item.price|peso }}</td>
+                    <td class="font-semibold">{{ item.subtotal|peso }}</td>
                 </tr>
                 {% empty %}
                     {% if order.product_name %}
@@ -108,7 +109,7 @@
                         <td class="font-medium">{{ order.product_name }}</td>
                         <td>—</td>
                         <td class="muted">—</td>
-                        <td class="font-semibold">&#8369;{{ order.total|floatformat:2 }}</td>
+                        <td class="font-semibold">{{ order.total|peso }}</td>
                     </tr>
                     {% else %}
                     <tr>
@@ -120,21 +121,21 @@
             <tfoot style="background:#fdf5f0;border-top:1px solid #ecddd5;">
                 <tr>
                     <td colspan="3" class="px-4 py-2 text-right label-text">Subtotal</td>
-                    <td class="px-4 py-2 font-medium body-text">&#8369;{{ order.subtotal|floatformat:2 }}</td>
+                    <td class="px-4 py-2 font-medium body-text">{{ order.subtotal|peso }}</td>
                 </tr>
                 <tr>
                     <td colspan="3" class="px-4 py-2 text-right label-text">Tax</td>
-                    <td class="px-4 py-2 font-medium body-text">&#8369;{{ order.tax|floatformat:2 }}</td>
+                    <td class="px-4 py-2 font-medium body-text">{{ order.tax|peso }}</td>
                 </tr>
                 {% if order.discount > 0 %}
                 <tr>
                     <td colspan="3" class="px-4 py-2 text-right label-text">Discount</td>
-                    <td class="px-4 py-2 font-medium body-text">-&#8369;{{ order.discount|floatformat:2 }}</td>
+                    <td class="px-4 py-2 font-medium body-text">-{{ order.discount|peso }}</td>
                 </tr>
                 {% endif %}
                 <tr>
                     <td colspan="3" class="px-4 py-3 text-right font-bold" style="color:#7C4A2D;">Total</td>
-                    <td class="px-4 py-3 text-lg font-bold" style="color:#7C4A2D;">&#8369;{{ order.total|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-lg font-bold" style="color:#7C4A2D;">{{ order.total|peso }}</td>
                 </tr>
             </tfoot>
         </table>

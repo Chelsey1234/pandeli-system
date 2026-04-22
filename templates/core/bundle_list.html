@@ -1,5 +1,6 @@
 {% extends 'core/base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Bundle Deals{% endblock %}
 
@@ -68,9 +69,9 @@
             {% endif %}
             <div class="flex items-center gap-3 mt-3">
                 {% if bundle.original_price > 0 %}
-                <span class="text-gray-400 text-sm line-through">₱{{ bundle.original_price|floatformat:2 }}</span>
+                <span class="text-gray-400 text-sm line-through">{{ bundle.original_price|peso }}</span>
                 {% endif %}
-                <span class="font-bold text-lg" style="color:#7C4A2D;">₱{{ bundle.bundle_price|floatformat:2 }}</span>
+                <span class="font-bold text-lg" style="color:#7C4A2D;">{{ bundle.bundle_price|peso }}</span>
                 {% if bundle.discount_percent > 0 %}
                 <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">
                     -{{ bundle.discount_percent }}%

@@ -16,7 +16,11 @@ function getCookie(name) {
 }
 
 function formatCurrency(amount) {
-    return '\u20B1' + parseFloat(amount).toFixed(2);
+    return '₱' + parseFloat(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatNumber(value) {
+    return parseFloat(value).toLocaleString('en-PH');
 }
 
 // ========== TOAST ==========

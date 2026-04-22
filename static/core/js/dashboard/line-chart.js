@@ -88,7 +88,7 @@ const LineChartManager = {
                         cornerRadius: 10,
                         displayColors: false,
                         callbacks: {
-                            label: function(ctx) { return ' \u20B1' + ctx.raw.toFixed(2); }
+                            label: function(ctx) { return ' \u20B1' + ctx.raw.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); }
                         }
                     }
                 },
@@ -97,7 +97,7 @@ const LineChartManager = {
                         beginAtZero: true,
                         grid: { color: 'rgba(69,117,180,0.08)', drawBorder: false },
                         border: { dash: [4,4], display: false },
-                        ticks: { callback: function(v) { return '\u20B1' + v; }, color: '#74add1', font: { size: 11 } }
+                        ticks: { callback: function(v) { return '₱' + v.toLocaleString('en-PH'); }, color: '#74add1', font: { size: 11 } }
                     },
                     x: {
                         grid: { display: false },

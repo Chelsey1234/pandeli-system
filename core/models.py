@@ -450,10 +450,9 @@ class Bundle(models.Model):
     image = models.ImageField(upload_to='bundles/', null=True, blank=True, help_text="Promo image shown in app bundle card")
     item_count = models.PositiveIntegerField(default=1, help_text="Number of items customer must pick")
     category = models.CharField(
-        max_length=20,
-        choices=Product.CATEGORY_CHOICES,
+        max_length=100,
         blank=True,
-        help_text="Leave blank to include all products"
+        help_text="Comma-separated categories e.g. 'croissants,pastries'. Leave blank for all products."
     )
     is_active = models.BooleanField(default=True)
     order = models.PositiveIntegerField(default=0)

@@ -97,7 +97,7 @@
                             <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">In Stock</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 text-gray-700">&#8369;{{ product.stock|default:0|multiply:product.price|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-gray-700">{{ product.stock|default:0|multiply:product.price|peso }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -151,7 +151,7 @@
                             <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">In Stock</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 text-gray-700">&#8369;{{ material.stock_quantity|default:0|multiply:material.cost_per_unit|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-gray-700">{{ material.stock_quantity|default:0|multiply:material.cost_per_unit|peso }}</td>
                     <td class="px-4 py-3">
                         <div class="flex gap-1">
                             <button onclick="editRawMaterial({{ material.id }})" title="Edit"

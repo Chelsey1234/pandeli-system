@@ -264,16 +264,15 @@
                         <p class="text-xs text-gray-400 mt-1">How many items to pick</p>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <select name="category" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
-                            <option value="">All Products</option>
-                            <option value="bread">🍞 Bread</option>
-                            <option value="pastries">🥐 Pastries</option>
-                            <option value="croissants">🥐 Croissants</option>
-                            <option value="beverages">☕ Beverages</option>
-                            <option value="spread">🍯 Spread</option>
-                        </select>
-                        <p class="text-xs text-gray-400 mt-1">Filter products by category</p>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Categories</label>
+                        <div class="space-y-1 border border-gray-200 rounded-xl p-3">
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="bread" class="rounded"> 🍞 Bread</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="pastries" class="rounded"> 🥐 Pastries</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="croissants" class="rounded"> 🥐 Croissants</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="beverages" class="rounded"> ☕ Beverages</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="spread" class="rounded"> 🍯 Spread</label>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Leave all unchecked = all products</p>
                     </div>
                 </div>
                 <div>
@@ -322,15 +321,15 @@
                         <input type="number" name="item_count" min="1" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <select name="category" class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2">
-                            <option value="">All Products</option>
-                            <option value="bread">🍞 Bread</option>
-                            <option value="pastries">🥐 Pastries</option>
-                            <option value="croissants">🥐 Croissants</option>
-                            <option value="beverages">☕ Beverages</option>
-                            <option value="spread">🍯 Spread</option>
-                        </select>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Categories</label>
+                        <div class="space-y-1 border border-gray-200 rounded-xl p-3">
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="bread" class="rounded"> 🍞 Bread</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="pastries" class="rounded"> 🥐 Pastries</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="croissants" class="rounded"> 🥐 Croissants</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="beverages" class="rounded"> ☕ Beverages</label>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="categories" value="spread" class="rounded"> 🍯 Spread</label>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Unchecked = all products</p>
                     </div>
                 </div>
                 <div>
@@ -382,7 +381,11 @@ function editBundle(pk, name, subtitle, description, itemCount, category) {
     modal.querySelector('[name=subtitle]').value = subtitle;
     modal.querySelector('[name=description]').value = description;
     modal.querySelector('[name=item_count]').value = itemCount;
-    modal.querySelector('[name=category]').value = category;
+    // Pre-check categories
+    var cats = category ? category.split(',') : [];
+    modal.querySelectorAll('[name=categories]').forEach(function(cb) {
+        cb.checked = cats.indexOf(cb.value) !== -1;
+    });
     modal.querySelector('form').action = '/products/bundles/' + pk + '/edit/';
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';

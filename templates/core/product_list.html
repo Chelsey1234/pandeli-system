@@ -1,5 +1,6 @@
 {% extends 'core/base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Products{% endblock %}
 
@@ -105,8 +106,8 @@
                     <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{{ product.code }}</code></td>
                     <td class="px-4 py-3 font-semibold text-gray-800">{{ product.name }}</td>
                     <td class="px-4 py-3 text-gray-500">{{ product.get_category_display }}</td>
-                    <td class="px-4 py-3 text-right text-gray-800">&#8369;{{ product.price|floatformat:2 }}</td>
-                    <td class="px-4 py-3 text-right text-gray-500">&#8369;{{ product.cost|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-right text-gray-800">{{ product.price|peso }}</td>
+                    <td class="px-4 py-3 text-right text-gray-500">{{ product.cost|peso }}</td>
                     <td class="px-4 py-3 text-center">
                         <span class="px-2 py-0.5 rounded-full text-xs font-medium
                             {% if product.stock <= product.low_stock_threshold %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">

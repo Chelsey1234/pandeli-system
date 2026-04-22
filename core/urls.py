@@ -124,7 +124,9 @@ urlpatterns = [
     path('api/bundles/', views.bundles_api, name='bundles_api'),
 
     # ------------------------------------------
-    # APP FEATURES (app home screen carousel)
+    # ORDER WEBHOOK (called by Supabase on new order)
+    # ------------------------------------------
+    path('api/webhook/new-order/', views.order_webhook, name='order_webhook'),
     # ------------------------------------------
     path('products/app-features/', views.app_feature_list, name='app_feature_list'),
     path('products/app-features/add/', views.app_feature_add, name='app_feature_add'),

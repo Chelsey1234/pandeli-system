@@ -39,7 +39,7 @@
                 var stock = parseInt(p.stock, 10) || 0;
                 var name = (p.name || 'Product #' + p.id).replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 return '<option value="' + p.id + '" data-price="' + price + '" data-stock="' + stock + '">'
-                    + name + ' \u2014 \u20B1' + price.toFixed(2) + ' (Stock: ' + stock + ')</option>';
+                    + name + ' \u2014 \u20B1' + price.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' (Stock: ' + stock + ')</option>';
             });
             $selects.prop('disabled', false).empty().append(placeholder + opts.join(''));
         }

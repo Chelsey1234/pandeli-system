@@ -1,5 +1,6 @@
 {% extends 'core/base.html' %}
 {% load static %}
+{% load custom_filters %}
 
 {% block title %}Production Cost & Profit Analytics{% endblock %}
 
@@ -28,15 +29,15 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
     <div class="card card-body">
         <p class="label-text mb-1">Total Revenue</p>
-        <p class="text-xl font-bold" style="color:#3d2010;">&#8369; {{ analysis.total_revenue|floatformat:2 }}</p>
+        <p class="text-xl font-bold" style="color:#3d2010;">{{ analysis.total_revenue|peso }}</p>
     </div>
     <div class="card card-body">
         <p class="label-text mb-1">Total Cost</p>
-        <p class="text-xl font-bold" style="color:#c53030;">&#8369; {{ analysis.total_cost|floatformat:2 }}</p>
+        <p class="text-xl font-bold" style="color:#c53030;">{{ analysis.total_cost|peso }}</p>
     </div>
     <div class="card card-body">
         <p class="label-text mb-1">Gross Profit</p>
-        <p class="text-xl font-bold" style="color:#276749;">&#8369; {{ analysis.gross_profit|floatformat:2 }}</p>
+        <p class="text-xl font-bold" style="color:#276749;">{{ analysis.gross_profit|peso }}</p>
     </div>
     <div class="card card-body">
         <p class="label-text mb-1">Profit Margin</p>
@@ -71,9 +72,9 @@
                 <tr>
                     <td class="font-medium">{{ p.name }}</td>
                     <td>{{ p.quantity }}</td>
-                    <td class="font-semibold">&#8369; {{ p.revenue|floatformat:2 }}</td>
-                    <td style="color:#c53030;">&#8369; {{ p.cost|floatformat:2 }}</td>
-                    <td class="font-semibold" style="color:#276749;">&#8369; {{ p.profit|floatformat:2 }}</td>
+                    <td class="font-semibold">{{ p.revenue|peso }}</td>
+                    <td style="color:#c53030;">{{ p.cost|peso }}</td>
+                    <td class="font-semibold" style="color:#276749;">{{ p.profit|peso }}</td>
                     <td>
                         <div class="flex items-center gap-2">
                             <div class="flex-1 rounded-full overflow-hidden" style="height:6px;background:#ecddd5;max-width:80px;">
@@ -133,13 +134,13 @@ document.addEventListener('DOMContentLoaded', function() {
             options: { responsive:true, maintainAspectRatio:false, cutout:'60%',
                 animation:{ animateRotate:true, animateScale:true, duration:900 },
                 plugins:{ legend:{ position:'bottom', labels:{ color:'#7C4A2D', font:{size:12}, padding:16, usePointStyle:true } },
-                    tooltip: Object.assign({},tip,{ callbacks:{ label:function(ctx){ return ' '+ctx.label+': \u20B1'+ctx.raw.toFixed(2); } } }) } },
+                    tooltip: Object.assign({},tip,{ callbacks:{ label:function(ctx){ return ' '+ctx.label+': ₱'+ctx.raw.toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); } } }) } },
             plugins:[{ id:'centre', afterDraw:function(chart){
                 var total=chart.data.datasets[0].data.reduce(function(a,b){return a+b;},0);
                 if(!total) return;
                 var c2=chart.ctx, cx=chart.chartArea.left+(chart.chartArea.right-chart.chartArea.left)/2, cy=chart.chartArea.top+(chart.chartArea.bottom-chart.chartArea.top)/2;
                 c2.save(); c2.textAlign='center'; c2.textBaseline='middle';
-                c2.fillStyle='#7C4A2D'; c2.font="bold 15px 'Poppins',sans-serif"; c2.fillText('\u20B1'+tRev.toFixed(0),cx,cy-8);
+                c2.fillStyle='#7C4A2D'; c2.font="bold 15px 'Poppins',sans-serif"; c2.fillText('₱'+tRev.toLocaleString('en-PH', {minimumFractionDigits:0, maximumFractionDigits:0}),cx,cy-8);
                 c2.fillStyle='#C98A6B'; c2.font="10px 'Poppins',sans-serif"; c2.fillText('Revenue',cx,cy+10); c2.restore();
             }}]
         });

@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -62,8 +63,8 @@
                 <tr>
                     <td>{{ item.product.name|truncatechars:15 }}</td>
                     <td>{{ item.quantity }}</td>
-                    <td class="text-right">&#8369;{{ item.price|floatformat:2 }}</td>
-                    <td class="text-right">&#8369;{{ item.subtotal|floatformat:2 }}</td>
+                    <td class="text-right">{{ item.price|peso }}</td>
+                    <td class="text-right">{{ item.subtotal|peso }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -73,32 +74,32 @@
             <table>
                 <tr>
                     <td>Subtotal:</td>
-                    <td class="text-right">&#8369;{{ order.subtotal|floatformat:2 }}</td>
+                    <td class="text-right">{{ order.subtotal|peso }}</td>
                 </tr>
                 {% if order.tax and order.tax != 0 %}
                 <tr>
                     <td>Tax:</td>
-                    <td class="text-right">&#8369;{{ order.tax|floatformat:2 }}</td>
+                    <td class="text-right">{{ order.tax|peso }}</td>
                 </tr>
                 {% endif %}
                 {% if order.discount and order.discount != 0 %}
                 <tr>
                     <td>Discount:</td>
-                    <td class="text-right">-&#8369;{{ order.discount|floatformat:2 }}</td>
+                    <td class="text-right">-{{ order.discount|peso }}</td>
                 </tr>
                 {% endif %}
                 <tr class="total-row">
                     <td>TOTAL:</td>
-                    <td class="text-right" style="color:#C98A6B;">&#8369;{{ order.total|floatformat:2 }}</td>
+                    <td class="text-right" style="color:#C98A6B;">{{ order.total|peso }}</td>
                 </tr>
                 {% if order.payment_method == 'cash' %}
                 <tr>
                     <td>Cash Received:</td>
-                    <td class="text-right">&#8369;{{ order.amount_received|floatformat:2 }}</td>
+                    <td class="text-right">{{ order.amount_received|peso }}</td>
                 </tr>
                 <tr>
                     <td>Change:</td>
-                    <td class="text-right">&#8369;{{ order.change_amount|floatformat:2 }}</td>
+                    <td class="text-right">{{ order.change_amount|peso }}</td>
                 </tr>
                 {% endif %}
             </table>

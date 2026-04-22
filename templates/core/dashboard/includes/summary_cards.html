@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <!-- 60-30-10: cards are white on #F5EDE8 canvas, brand color for icons, accent for key numbers -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
@@ -6,7 +7,7 @@
         <div class="flex items-start justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wide" style="color:#a86b4e;">Today's Sales</p>
-                <p class="text-2xl font-bold mt-1" style="color:#3d2010;">&#8369;{{ daily_sales|floatformat:2 }}</p>
+                <p class="text-2xl font-bold mt-1" style="color:#3d2010;">{{ daily_sales|peso }}</p>
                 <p class="text-xs mt-1" style="color:#b89080;">
                     {% if sales_change_pct >= 0 %}
                         <i class="fas fa-arrow-up mr-1"></i>+{{ sales_change_pct }}%
@@ -27,7 +28,7 @@
         <div class="flex items-start justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-wide" style="color:#a86b4e;">Monthly Sales</p>
-                <p class="text-2xl font-bold mt-1" style="color:#3d2010;">&#8369;{{ monthly_sales|floatformat:2 }}</p>
+                <p class="text-2xl font-bold mt-1" style="color:#3d2010;">{{ monthly_sales|peso }}</p>
                 <p class="text-xs mt-1" style="color:#b89080;"><i class="fas fa-calendar mr-1"></i>This month</p>
             </div>
             <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:#fdf5f0;">

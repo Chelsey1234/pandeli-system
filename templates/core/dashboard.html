@@ -45,7 +45,7 @@
     window.categoryData = {
         labels: {{ category_labels|safe }},
         sales: {{ category_sales|safe }},
-        quantities: []
+        quantities: {{ category_qty|safe }}
     };
     window.topProductsData = {
         labels: {{ top_product_labels|safe }},
@@ -58,11 +58,11 @@
 <script src="https://cdn.jsdelivr.net/npm/d3-color@3"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-interpolate@3"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-scale-chromatic@3"></script>
-<script src="{% static 'core/js/dashboard/charts.js' %}"></script>
-<script src="{% static 'core/js/dashboard/line-chart.js' %}"></script>
-<script src="{% static 'core/js/dashboard/category-chart.js' %}"></script>
-<script src="{% static 'core/js/dashboard/products-chart.js' %}"></script>
-<script src="{% static 'core/js/dashboard/best-sellers.js' %}"></script>
+<script src="{% static 'core/js/dashboard/charts.js' %}?v=6"></script>
+<script src="{% static 'core/js/dashboard/line-chart.js' %}?v=6"></script>
+<script src="{% static 'core/js/dashboard/category-chart.js' %}?v=6"></script>
+<script src="{% static 'core/js/dashboard/products-chart.js' %}?v=6"></script>
+<script src="{% static 'core/js/dashboard/best-sellers.js' %}?v=6"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (typeof DashboardCharts !== 'undefined') DashboardCharts.init();

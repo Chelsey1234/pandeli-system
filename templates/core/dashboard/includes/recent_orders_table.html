@@ -1,3 +1,4 @@
+{% load custom_filters %}
 <div class="bg-white rounded-2xl shadow-sm overflow-hidden" style="border:1px solid #ecddd5;">
     <div class="flex items-center justify-between px-5 py-4"
          style="border-bottom:1px solid #f0e0d6;">
@@ -35,7 +36,7 @@
                         </span>
                     </td>
                     <td class="px-4 py-3 text-gray-600">{{ order.customer.name|default:"—" }}</td>
-                    <td class="px-4 py-3 text-gray-800">&#8369;{{ order.total|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-gray-800">{{ order.total|peso }}</td>
                     <td class="px-4 py-3">
                         <span class="px-2 py-0.5 rounded-full text-xs font-medium
                             {% if order.status == 'pending' %}bg-yellow-100 text-yellow-700

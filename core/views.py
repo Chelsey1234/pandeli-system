@@ -169,8 +169,21 @@ def dashboard(request):
         is_available=True
     )[:10]
     
-    # Best selling products — use OrderItem if available, else use product_name from Order
-    best_sellers_oi = list(OrderItem.objects.values(
+    # Sales by category and top products — always initialize lists first
+    start_30 = today - timedelta(days=30)
+    category_labels = []
+    category_sales = []
+    category_qty = []
+    top_product_labels = []
+    top_product_sales = []
+    top_product_qty = []
+
+    tz = timezone.get_current_timezone()
+
+    # Best selling products — last 30 days, use OrderItem if available
+    best_sellers_oi = list(OrderItem.objects.filter(
+        order__created_at__date__gte=start_30
+    ).values(
         'product__name', 'product__id'
     ).annotate(
         quantity=Sum('quantity'),
@@ -190,14 +203,6 @@ def dashboard(request):
         )
         for b in best_sellers:
             b['product__name'] = b.pop('product_name', '')
-
-    # Sales by category and top products — always initialize lists first
-    start_30 = today - timedelta(days=30)
-    category_labels = []
-    category_sales = []
-    top_product_labels = []
-    top_product_sales = []
-    top_product_qty = []
 
     tz = timezone.get_current_timezone()
 
@@ -242,6 +247,7 @@ def dashboard(request):
             cat = dict(Product.CATEGORY_CHOICES).get(item['product__category'], item['product__category'].title())
             category_labels.append(cat)
             category_sales.append(float(item['total_sales']))
+            category_qty.append(int(item['total_qty'] or 0))
     else:
         # Fallback: match product_name from orders to get category
         order_products = list(
@@ -254,9 +260,12 @@ def dashboard(request):
         for op in order_products:
             product = Product.objects.filter(name__iexact=op['product_name']).first()
             cat = product.get_category_display() if product else 'Other'
-            cat_totals[cat] = cat_totals.get(cat, 0) + float(op['total'])
+            if cat not in cat_totals:
+                cat_totals[cat] = {'sales': 0, 'qty': 0}
+            cat_totals[cat]['sales'] += float(op['total'])
         category_labels = list(cat_totals.keys())
-        category_sales = list(cat_totals.values())
+        category_sales = [v['sales'] for v in cat_totals.values()]
+        category_qty = [v['qty'] for v in cat_totals.values()]
 
     # Sales graph data (last 7 days) — use Manila timezone for TruncDay
     sales_qs = (
@@ -294,6 +303,7 @@ def dashboard(request):
         'sales_data': json.dumps(sales_data),
         'category_labels': json.dumps(category_labels),
         'category_sales': json.dumps(category_sales),
+        'category_qty': json.dumps(category_qty),
         'top_product_labels': json.dumps(top_product_labels),
         'top_product_sales': json.dumps(top_product_sales),
         'top_product_qty': json.dumps(top_product_qty),

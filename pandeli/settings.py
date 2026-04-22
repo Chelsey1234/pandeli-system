@@ -223,6 +223,7 @@ PUBLIC_PATHS = [
     '/api/products/new_arrivals/',
     '/api/products/best_sellers/',
     '/api/bundles/',
+    '/api/webhook/',
 ]
 
 IMPORT_EXPORT_USE_TRANSACTIONS = True

@@ -285,6 +285,19 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.save()
 
         serializer = self.get_serializer(order)
+        
+        # Notify all admins about new order
+        try:
+            from .notifications import NotificationService
+            NotificationService.notify_admins(
+                title=f"New Order #{order.order_number}",
+                message=f"New {order.order_type} order received. Total: ₱{order.total}",
+                notification_type='order',
+                priority='high'
+            )
+        except Exception:
+            pass
+        
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'])
@@ -438,16 +451,17 @@ class DashboardViewSet(viewsets.ViewSet):
         days = int(request.GET.get('days', 7))
         today = timezone.localdate()
         start = today - timedelta(days=days - 1)
+        tz = timezone.get_current_timezone()
 
-        # Single query instead of N queries
+        # Use Manila timezone for accurate day boundaries
         qs = (
             Order.objects.filter(created_at__date__gte=start)
-            .annotate(day=TruncDay('created_at'))
+            .annotate(day=TruncDay('created_at', tzinfo=tz))
             .values('day')
             .annotate(total=Sum('total'))
             .order_by('day')
         )
-        by_date = {row['day'].date(): float(row['total'] or 0) for row in qs}
+        by_date = {row['day'].astimezone(tz).date(): float(row['total'] or 0) for row in qs}
 
         data = []
         for i in range(days - 1, -1, -1):
