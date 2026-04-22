@@ -32,6 +32,7 @@
         <div class="card-body">
             <form method="post" enctype="multipart/form-data" novalidate class="space-y-4">
                 {% csrf_token %}
+                <input type="hidden" name="form_type" value="profile">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="form-label" for="id_first_name">First name</label>
@@ -73,4 +74,70 @@
         </div>
     </div>
 </div>
+
+<!-- Change Password -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
+    <div class="lg:col-start-2 lg:col-span-2 card">
+        <div class="card-header">
+            <span class="card-title"><i class="fas fa-lock mr-2" style="color:#C98A6B;"></i>Change Password</span>
+        </div>
+        <div class="card-body">
+            <form method="post" novalidate class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="password">
+                <div>
+                    <label class="form-label">Current Password</label>
+                    <div class="relative">
+                        <input type="password" name="current_password" id="cur_pw"
+                               autocomplete="current-password" placeholder="Enter current password"
+                               class="form-input pr-10" required>
+                        <button type="button" onclick="togglePw('cur_pw','cur_icon')" tabindex="-1"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand transition-colors" style="background:none;border:none;cursor:pointer;">
+                            <i id="cur_icon" class="fas fa-eye text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">New Password</label>
+                    <div class="relative">
+                        <input type="password" name="new_password1" id="new_pw1"
+                               autocomplete="new-password" placeholder="Enter new password"
+                               class="form-input pr-10" required>
+                        <button type="button" onclick="togglePw('new_pw1','new_icon1')" tabindex="-1"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand transition-colors" style="background:none;border:none;cursor:pointer;">
+                            <i id="new_icon1" class="fas fa-eye text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Confirm New Password</label>
+                    <div class="relative">
+                        <input type="password" name="new_password2" id="new_pw2"
+                               autocomplete="new-password" placeholder="Confirm new password"
+                               class="form-input pr-10" required>
+                        <button type="button" onclick="togglePw('new_pw2','new_icon2')" tabindex="-1"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand transition-colors" style="background:none;border:none;cursor:pointer;">
+                            <i id="new_icon2" class="fas fa-eye text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary"><i class="fas fa-key"></i> Change Password</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePw(inputId, iconId) {
+    var input = document.getElementById(inputId);
+    var icon  = document.getElementById(iconId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+</script>
 {% endblock %}

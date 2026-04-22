@@ -1,9 +1,29 @@
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.views import PasswordResetConfirmView
+from django.contrib.auth import update_session_auth_hash
+from django.shortcuts import redirect
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken.views import obtain_auth_token
 from . import views
 from . import views_api
+
+
+class SessionInvalidatingPasswordResetConfirmView(PasswordResetConfirmView):
+    """
+    After a successful password reset, invalidate ALL existing sessions
+    so the old password can no longer be used to stay logged in.
+    """
+    template_name = 'registration/password_reset_confirm.html'
+    success_url = '/password-reset-complete/'
+
+    def form_valid(self, form):
+        user = form.save()
+        # Rotate session auth hash so old sessions are invalidated
+        update_session_auth_hash(self.request, user)
+        # Explicitly redirect to complete page
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(self.success_url)
 
 # ========== API ROUTER CONFIGURATION ==========
 # Remove 'api/' from these prefixes - they'll be added by the include below
@@ -28,16 +48,21 @@ urlpatterns = [
     # ------------------------------------------
     # PASSWORD RESET
     # ------------------------------------------
-    path('password-reset/', 
-         auth_views.PasswordResetView.as_view(template_name='registration/password_reset.html'),
+    path('password-reset/',
+         auth_views.PasswordResetView.as_view(
+             template_name='registration/password_reset.html',
+             email_template_name='registration/password_reset_email.html',
+             subject_template_name='registration/password_reset_subject.txt',
+             success_url='/password-reset/done/',
+         ),
          name='password_reset'),
-    path('password-reset/done/', 
+    path('password-reset/done/',
          auth_views.PasswordResetDoneView.as_view(template_name='registration/password_reset_done.html'),
          name='password_reset_done'),
-    path('password-reset-confirm/<uidb64>/<token>/', 
-         auth_views.PasswordResetConfirmView.as_view(template_name='registration/password_reset_confirm.html'),
+    path('password-reset-confirm/<uidb64>/<token>/',
+         SessionInvalidatingPasswordResetConfirmView.as_view(),
          name='password_reset_confirm'),
-    path('password-reset-complete/', 
+    path('password-reset-complete/',
          auth_views.PasswordResetCompleteView.as_view(template_name='registration/password_reset_complete.html'),
          name='password_reset_complete'),
     

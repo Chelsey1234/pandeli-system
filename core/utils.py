@@ -92,44 +92,85 @@ def generate_sales_forecast(product, days=30):
 
 def generate_simple_forecast(product, days=30):
     """
-    Generate simple forecast using moving average
+    Generate forecast using weighted moving average with day-of-week adjustment.
+    Accurate, deterministic, and fast (single DB query + bulk upsert).
     """
     try:
-        # Get average daily sales from last 30 days
         end_date = timezone.now().date()
-        start_date = end_date - timedelta(days=30)
-        
-        avg_sales = OrderItem.objects.filter(
+        # Pull 90 days of history for better day-of-week patterns
+        start_date = end_date - timedelta(days=90)
+
+        daily_sales = list(OrderItem.objects.filter(
             product=product,
             order__created_at__date__gte=start_date,
             order__created_at__date__lte=end_date,
-        ).aggregate(avg=Sum('quantity') / 30)['avg'] or 0
-        
-        avg_sales = max(1, int(round(avg_sales)))
-        
-        forecasts = []
+        ).values('order__created_at__date').annotate(
+            total=Sum('quantity')
+        ).order_by('order__created_at__date'))
+
+        # Build full 90-day series (fill missing days with 0)
+        sales_map = {row['order__created_at__date']: int(row['total']) for row in daily_sales}
+        full_series = []
+        for i in range(90):
+            d = start_date + timedelta(days=i)
+            full_series.append((d, sales_map.get(d, 0)))
+
+        # Day-of-week average (0=Mon … 6=Sun)
+        dow_totals = [0] * 7
+        dow_counts = [0] * 7
+        for d, qty in full_series:
+            dow = d.weekday()
+            dow_totals[dow] += qty
+            dow_counts[dow] += 1
+        dow_avg = [
+            dow_totals[i] / dow_counts[i] if dow_counts[i] else 0
+            for i in range(7)
+        ]
+
+        # Weighted moving average of last 30 days (more recent = higher weight)
+        recent = [qty for _, qty in full_series[-30:]]
+        weights = list(range(1, 31))  # 1..30
+        wma = sum(v * w for v, w in zip(recent, weights)) / sum(weights) if sum(weights) else 0
+
+        # Overall daily average for scaling
+        overall_avg = sum(qty for _, qty in full_series) / 90 if full_series else 0
+
+        # Build forecast objects in memory, then bulk upsert
+        to_upsert = []
         for i in range(days):
-            forecast_date = end_date + timedelta(days=i+1)
-            # Add some random variation
-            variation = np.random.randint(-2, 3)
-            predicted = max(0, avg_sales + variation)
-            
-            forecast_obj, created = SalesForecast.objects.update_or_create(
+            forecast_date = end_date + timedelta(days=i + 1)
+            dow = forecast_date.weekday()
+
+            # Blend WMA with day-of-week pattern
+            if overall_avg > 0:
+                dow_factor = dow_avg[dow] / overall_avg
+            else:
+                dow_factor = 1.0
+
+            predicted = max(0, round(wma * dow_factor))
+            margin = max(1, round(predicted * 0.25))  # 25% confidence interval
+
+            to_upsert.append(SalesForecast(
                 product=product,
                 forecast_date=forecast_date,
-                defaults={
-                    'predicted_quantity': predicted,
-                    'confidence_lower': max(0, predicted - 5),
-                    'confidence_upper': predicted + 5,
-                    'model_used': 'Moving Average'
-                }
-            )
-            forecasts.append(forecast_obj)
-        
-        return forecasts
-        
+                predicted_quantity=predicted,
+                confidence_lower=max(0, predicted - margin),
+                confidence_upper=predicted + margin,
+                model_used='WMA'
+            ))
+
+        # Bulk upsert — single query instead of N round trips
+        SalesForecast.objects.bulk_create(
+            to_upsert,
+            update_conflicts=True,
+            unique_fields=['product', 'forecast_date'],
+            update_fields=['predicted_quantity', 'confidence_lower', 'confidence_upper', 'model_used'],
+        )
+
+        return to_upsert
+
     except Exception as e:
-        logger.error(f"Error generating simple forecast for {product.name}: {str(e)}")
+        logger.error(f"Error generating forecast for {product.name}: {str(e)}")
         return []
 
 def check_low_stock_alerts():

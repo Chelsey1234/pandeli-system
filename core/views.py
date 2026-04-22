@@ -99,7 +99,29 @@ def logout_view(request):
 @login_required
 def user_profile(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
     if request.method == 'POST':
+        form_type = request.POST.get('form_type', 'profile')
+
+        if form_type == 'password':
+            from django.contrib.auth import update_session_auth_hash
+            current = request.POST.get('current_password')
+            new1 = request.POST.get('new_password1')
+            new2 = request.POST.get('new_password2')
+            if not request.user.check_password(current):
+                messages.error(request, 'Current password is incorrect.')
+            elif not new1 or len(new1) < 6:
+                messages.error(request, 'New password must be at least 6 characters.')
+            elif new1 != new2:
+                messages.error(request, 'New passwords do not match.')
+            else:
+                request.user.set_password(new1)
+                request.user.save()
+                update_session_auth_hash(request, request.user)
+                messages.success(request, 'Password changed successfully.')
+            return redirect('user_profile')
+
+        # Profile form
         user_form = UserUpdateForm(request.POST, instance=request.user)
         profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
         if user_form.is_valid() and profile_form.is_valid():
@@ -111,6 +133,7 @@ def user_profile(request):
     else:
         user_form = UserUpdateForm(instance=request.user)
         profile_form = ProfileUpdateForm(instance=profile)
+
     return render(
         request,
         'core/profile.html',
@@ -908,9 +931,10 @@ def forecast(request):
         forecast_dates.append(forecast.forecast_date.strftime('%Y-%m-%d'))
         forecast_values.append(forecast.predicted_quantity)
     
-    # Get historical data for comparison
+    # Get historical data for comparison (last 30 days)
     historical_data = OrderItem.objects.filter(
-        order__created_at__date__gte=timezone.now().date() - timedelta(days=30)
+        order__created_at__date__gte=timezone.now().date() - timedelta(days=30),
+        order__created_at__date__lte=timezone.now().date(),
     ).values(
         'order__created_at__date'
     ).annotate(
@@ -934,19 +958,22 @@ def forecast(request):
 def run_forecast(request):
     if request.method == 'POST':
         product_id = request.POST.get('product_id')
-        days = min(int(request.POST.get('days', 14)), 90)  # cap at 90
+        days = min(int(request.POST.get('days', 30)), 90)  # cap at 90
 
         created_count = 0
+        today = timezone.now().date()
         try:
             if product_id:
                 product = get_object_or_404(Product, id=product_id)
+                # Clear stale forecasts for this product before regenerating
+                SalesForecast.objects.filter(product=product, forecast_date__lt=today).delete()
                 result = generate_simple_forecast(product, days)
                 created_count = len(result or [])
             else:
-                # Limit to 5 products to avoid timeout on Railway
-                products = Product.objects.filter(
-                    is_archived=False, is_available=True
-                ).order_by('-updated_at')[:5]
+                # Clear all stale past forecasts
+                SalesForecast.objects.filter(forecast_date__lt=today).delete()
+                # Run for all active products — bulk_create makes this fast
+                products = Product.objects.filter(is_archived=False).order_by('name')
                 for product in products:
                     try:
                         result = generate_simple_forecast(product, days)
@@ -973,31 +1000,70 @@ def forecast_data(request):
     days = int(request.GET.get('days', 30))
     product_id = request.GET.get('product_id')
 
-    qs = SalesForecast.objects.filter(
-        forecast_date__gte=timezone.now().date()
-    ).select_related('product').order_by('forecast_date')[:days]
+    today = timezone.now().date()
 
     if product_id:
-        qs = qs.filter(product_id=product_id)
+        # Single product — show its own N-day series
+        qs = SalesForecast.objects.filter(
+            forecast_date__gte=today,
+            product_id=product_id,
+        ).select_related('product').order_by('forecast_date')[:days]
 
-    forecasts_data = []
-    forecast_dates = []
-    forecast_values = []
-    for f in qs:
-        forecast_dates.append(f.forecast_date.strftime('%Y-%m-%d'))
-        forecast_values.append(f.predicted_quantity)
-        forecasts_data.append({
-            'product_name': f.product.name,
-            'forecast_date': f.forecast_date.strftime('%Y-%m-%d'),
-            'predicted_quantity': f.predicted_quantity,
-            'confidence_lower': f.confidence_lower,
-            'confidence_upper': f.confidence_upper,
-            'model_used': f.model_used,
-        })
+        forecasts_data = []
+        forecast_dates = []
+        forecast_values = []
+        for f in qs:
+            forecast_dates.append(f.forecast_date.strftime('%Y-%m-%d'))
+            forecast_values.append(f.predicted_quantity)
+            forecasts_data.append({
+                'product_name': f.product.name,
+                'forecast_date': f.forecast_date.strftime('%Y-%m-%d'),
+                'predicted_quantity': f.predicted_quantity,
+                'confidence_lower': f.confidence_lower,
+                'confidence_upper': f.confidence_upper,
+                'model_used': f.model_used,
+            })
 
-    hist_qs = OrderItem.objects.filter(
-        order__created_at__date__gte=timezone.now().date() - timedelta(days=30)
-    ).values('order__created_at__date').annotate(total=Sum('quantity')).order_by('order__created_at__date')
+        hist_qs = OrderItem.objects.filter(
+            product_id=product_id,
+            order__created_at__date__gte=today - timedelta(days=days),
+            order__created_at__date__lte=today,
+        ).values('order__created_at__date').annotate(
+            total=Sum('quantity')
+        ).order_by('order__created_at__date')
+
+    else:
+        # All products — aggregate by date so each date = 1 data point on the chart
+        agg_qs = SalesForecast.objects.filter(
+            forecast_date__gte=today,
+        ).values('forecast_date').annotate(
+            total_qty=Sum('predicted_quantity'),
+            total_lower=Sum('confidence_lower'),
+            total_upper=Sum('confidence_upper'),
+        ).order_by('forecast_date')[:days]
+
+        forecasts_data = []
+        forecast_dates = []
+        forecast_values = []
+        for row in agg_qs:
+            d = row['forecast_date'].strftime('%Y-%m-%d')
+            forecast_dates.append(d)
+            forecast_values.append(row['total_qty'])
+            forecasts_data.append({
+                'product_name': 'All Products',
+                'forecast_date': d,
+                'predicted_quantity': row['total_qty'],
+                'confidence_lower': row['total_lower'],
+                'confidence_upper': row['total_upper'],
+                'model_used': 'WMA',
+            })
+
+        hist_qs = OrderItem.objects.filter(
+            order__created_at__date__gte=today - timedelta(days=days),
+            order__created_at__date__lte=today,
+        ).values('order__created_at__date').annotate(
+            total=Sum('quantity')
+        ).order_by('order__created_at__date')
 
     historical_dates  = [i['order__created_at__date'].strftime('%Y-%m-%d') for i in hist_qs]
     historical_values = [i['total'] for i in hist_qs]

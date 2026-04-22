@@ -1,4 +1,4 @@
-{% load custom_filters %}
+{% load static custom_filters %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,113 +7,187 @@
     <title>Receipt - {{ order.order_number }}</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Courier New', monospace; background: #f3f4f6; display: flex; justify-content: center; padding: 2rem; }
-        .receipt { background: #fff; max-width: 320px; width: 100%; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        .receipt-header { text-align: center; margin-bottom: 1rem; border-bottom: 1px dashed #ccc; padding-bottom: 1rem; }
-        .receipt-header h3 { font-size: 1.2rem; color: #C98A6B; margin-bottom: 0.25rem; }
-        .receipt-header p { font-size: 0.75rem; color: #666; line-height: 1.5; }
-        .receipt-info { font-size: 0.8rem; margin-bottom: 1rem; }
-        .receipt-info p { margin-bottom: 0.2rem; }
-        table { width: 100%; font-size: 0.78rem; border-collapse: collapse; }
-        thead th { border-bottom: 1px solid #ccc; padding: 4px 2px; text-align: left; }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background: #e8f5e9;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 2rem 1rem;
+            min-height: 100vh;
+        }
+        .receipt-wrap {
+            background: #fff;
+            max-width: 340px;
+            width: 100%;
+            border-radius: 14px;
+            box-shadow: 0 6px 32px rgba(0,0,0,0.13);
+            padding: 2rem 1.75rem 1.5rem;
+        }
+
+        /* ── Header ── */
+        .receipt-header { text-align: center; padding-bottom: 1rem; border-bottom: 1px dashed #bbb; margin-bottom: 1rem; }
+        .receipt-header img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; margin-bottom: 0.6rem; }
+        .receipt-header .brand-initials {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: #C98A6B; color: #fff;
+            font-size: 1.4rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 0.6rem;
+        }
+        .receipt-header p { font-size: 0.72rem; color: #555; line-height: 1.6; }
+
+        /* ── Order info ── */
+        .receipt-info { font-size: 0.78rem; color: #333; margin-bottom: 1rem; line-height: 1.7; }
+        .receipt-info p { margin: 0; }
+
+        /* ── Items table ── */
+        .divider { border: none; border-top: 1px dashed #bbb; margin: 0.6rem 0; }
+        table { width: 100%; font-size: 0.76rem; border-collapse: collapse; }
+        thead th {
+            text-align: left; padding: 3px 2px;
+            border-bottom: 1px solid #ccc;
+            font-weight: 700;
+        }
+        thead th.r, tbody td.r { text-align: right; }
         tbody td { padding: 4px 2px; }
-        .text-right { text-align: right; }
-        .receipt-total { border-top: 1px dashed #ccc; margin-top: 0.75rem; padding-top: 0.75rem; }
-        .receipt-total td { padding: 3px 2px; font-size: 0.8rem; }
-        .receipt-total .total-row td { font-weight: bold; font-size: 0.9rem; }
-        .receipt-footer { text-align: center; margin-top: 1rem; font-size: 0.7rem; color: #888; border-top: 1px dashed #ccc; padding-top: 0.75rem; }
-        .no-print { text-align: center; margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: center; }
-        .btn { padding: 0.5rem 1.25rem; border: none; border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-weight: 600; transition: opacity 0.15s; }
+
+        /* ── Totals ── */
+        .totals { margin-top: 0.5rem; font-size: 0.78rem; }
+        .totals tr td { padding: 2px 2px; }
+        .totals tr td:last-child { text-align: right; }
+        .totals .grand td { font-weight: 700; font-size: 0.88rem; }
+        .totals .grand td:last-child { color: #C98A6B; }
+
+        /* ── Footer ── */
+        .receipt-footer {
+            text-align: center; margin-top: 1rem;
+            font-size: 0.7rem; color: #888;
+            border-top: 1px dashed #bbb; padding-top: 0.75rem;
+            line-height: 1.7;
+        }
+
+        /* ── Buttons ── */
+        .no-print {
+            display: flex; gap: 0.5rem; justify-content: center;
+            margin-top: 1.5rem;
+        }
+        .btn {
+            padding: 0.5rem 1.4rem; border: none; border-radius: 8px;
+            font-size: 0.85rem; cursor: pointer; font-weight: 600;
+            font-family: 'Courier New', monospace;
+            transition: opacity 0.15s;
+        }
         .btn:hover { opacity: 0.85; }
         .btn-primary { background: #C98A6B; color: #fff; }
         .btn-secondary { background: #e5e7eb; color: #374151; }
+
         @media print {
             body { background: none; padding: 0; }
-            .receipt { box-shadow: none; border-radius: 0; }
+            .receipt-wrap { box-shadow: none; border-radius: 0; padding: 0; max-width: 100%; }
             .no-print { display: none; }
         }
     </style>
 </head>
 <body>
-    <div class="receipt">
-        <div class="receipt-header">
-            <h3>Pandeli Bakery</h3>
-            <p>123 Main Street<br>City, State 12345<br>Tel: (123) 456-7890</p>
-        </div>
+<div class="receipt-wrap">
 
-        <div class="receipt-info">
-            <p><strong>Order #:</strong> {{ order.order_number }}</p>
-            <p><strong>Date:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</p>
-            <p><strong>Cashier:</strong> {{ order.created_by.get_full_name|default:order.created_by.username }}</p>
-            <p><strong>Customer:</strong> {{ order.customer.name|default:"Walk-in Customer" }}</p>
-            <p><strong>Payment:</strong> {{ order.payment_method|default:"cash"|title }}</p>
-        </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th class="text-right">Price</th>
-                    <th class="text-right">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in order.items.all %}
-                <tr>
-                    <td>{{ item.product.name|truncatechars:15 }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td class="text-right">{{ item.price|peso }}</td>
-                    <td class="text-right">{{ item.subtotal|peso }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <div class="receipt-total">
-            <table>
-                <tr>
-                    <td>Subtotal:</td>
-                    <td class="text-right">{{ order.subtotal|peso }}</td>
-                </tr>
-                {% if order.tax and order.tax != 0 %}
-                <tr>
-                    <td>Tax:</td>
-                    <td class="text-right">{{ order.tax|peso }}</td>
-                </tr>
-                {% endif %}
-                {% if order.discount and order.discount != 0 %}
-                <tr>
-                    <td>Discount:</td>
-                    <td class="text-right">-{{ order.discount|peso }}</td>
-                </tr>
-                {% endif %}
-                <tr class="total-row">
-                    <td>TOTAL:</td>
-                    <td class="text-right" style="color:#C98A6B;">{{ order.total|peso }}</td>
-                </tr>
-                {% if order.payment_method == 'cash' %}
-                <tr>
-                    <td>Cash Received:</td>
-                    <td class="text-right">{{ order.amount_received|peso }}</td>
-                </tr>
-                <tr>
-                    <td>Change:</td>
-                    <td class="text-right">{{ order.change_amount|peso }}</td>
-                </tr>
-                {% endif %}
-            </table>
-        </div>
-
-        <div class="receipt-footer">
-            <p>Thank you for your purchase!</p>
-            <p>This serves as your official receipt.</p>
-        </div>
-
-        <div class="no-print">
-            <button class="btn btn-primary" onclick="window.print()">Print Receipt</button>
-            <button class="btn btn-secondary" onclick="window.close()">Close</button>
-        </div>
+    <!-- Header -->
+    <div class="receipt-header">
+        <img src="{% static 'core/images/pandeli_logo.png' %}"
+             alt="Pandeli"
+             onerror="this.style.display='none';document.getElementById('brand-init').style.display='flex';">
+        <div class="brand-initials" id="brand-init" style="display:none;">P</div>
+        <p>
+            Primark, Pagsawitan, Sta. Cruz,<br>
+            Laguna<br>
+            Tel: 0977 332 3235
+        </p>
     </div>
+
+    <!-- Order Info -->
+    <div class="receipt-info">
+        <p><strong>Order #:</strong> {{ order.order_number }}</p>
+        <p><strong>Date:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</p>
+        <p><strong>Cashier:</strong> {{ order.created_by.get_full_name|default:order.created_by.username }}</p>
+        <p><strong>Customer:</strong>
+            {% if order.customer %}{{ order.customer.name }}{% else %}Walk-in Customer{% endif %}
+        </p>
+        <p><strong>Payment:</strong> {{ order.get_payment_method_display }}</p>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Items -->
+    <table>
+        <thead>
+            <tr>
+                <th style="width:42%;">Item</th>
+                <th style="width:12%;">Qty</th>
+                <th class="r" style="width:22%;">Price</th>
+                <th class="r" style="width:24%;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.items.all %}
+            <tr>
+                <td>{{ item.product.name|truncatechars:16 }}</td>
+                <td>{{ item.quantity }}</td>
+                <td class="r">{{ item.price|peso }}</td>
+                <td class="r">{{ item.subtotal|peso }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <hr class="divider">
+
+    <!-- Totals -->
+    <table class="totals">
+        <tr>
+            <td>Subtotal:</td>
+            <td>{{ order.subtotal|peso }}</td>
+        </tr>
+        {% if order.tax and order.tax != 0 %}
+        <tr>
+            <td>Tax:</td>
+            <td>{{ order.tax|peso }}</td>
+        </tr>
+        {% endif %}
+        {% if order.discount and order.discount != 0 %}
+        <tr>
+            <td>Discount:</td>
+            <td>-{{ order.discount|peso }}</td>
+        </tr>
+        {% endif %}
+        <tr class="grand">
+            <td>TOTAL:</td>
+            <td>{{ order.total|peso }}</td>
+        </tr>
+        {% if order.payment_method == 'cash' %}
+        <tr>
+            <td>Cash Received:</td>
+            <td>{{ order.amount_received|peso }}</td>
+        </tr>
+        <tr>
+            <td>Change:</td>
+            <td>{{ order.change_amount|peso }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <!-- Footer -->
+    <div class="receipt-footer">
+        <p>Thank you for your purchase!</p>
+        <p>This serves as your official receipt.</p>
+    </div>
+
+    <!-- Buttons -->
+    <div class="no-print">
+        <button class="btn btn-primary" onclick="window.print()">Print Receipt</button>
+        <button class="btn btn-secondary" onclick="window.close()">Close</button>
+    </div>
+
+</div>
 </body>
 </html>

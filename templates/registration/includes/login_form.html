@@ -30,9 +30,11 @@
                    onfocus="this.style.background='rgba(255,255,255,0.3)';this.style.borderColor='rgba(255,255,255,0.7)'"
                    onblur="this.style.background='rgba(255,255,255,0.2)';this.style.borderColor='rgba(255,255,255,0.35)'">
             <button type="button" onclick="togglePassword()"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                    style="color:rgba(255,255,255,0.6);">
-                <i class="fas fa-eye text-sm" id="togglePasswordIcon"></i>
+                    tabindex="-1"
+                    class="absolute right-3 top-1/2 -translate-y-1/2"
+                    style="background:none;border:none;cursor:pointer;padding:4px;line-height:1;">
+                <i class="fas fa-eye text-base" id="togglePasswordIcon"
+                   style="color:#7C4A2D;text-shadow:0 0 4px rgba(255,255,255,0.8);"></i>
             </button>
         </div>
     </div>
@@ -70,3 +72,17 @@
 /* Placeholder color for glass inputs */
 #username::placeholder, #password::placeholder { color: rgba(255,255,255,0.5); }
 </style>
+
+<script>
+function togglePassword() {
+    var input = document.getElementById('password');
+    var icon  = document.getElementById('togglePasswordIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+</script>
