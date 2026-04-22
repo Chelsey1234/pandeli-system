@@ -1852,13 +1852,6 @@ def pos_create_order(request):
                 customer.loyalty_points += int(total / 10)  # 1 point per $10 spent
                 customer.save()
             
-            # Notify admins about new POS order
-            try:
-                from .notifications import create_order_notification
-                create_order_notification(order, event_type='created')
-            except Exception:
-                pass
-            
             return JsonResponse({
                 'success': True,
                 'order_id': order.id,

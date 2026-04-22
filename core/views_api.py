@@ -285,19 +285,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.save()
 
         serializer = self.get_serializer(order)
-        
-        # Notify all admins about new order
-        try:
-            from .notifications import NotificationService
-            NotificationService.notify_admins(
-                title=f"New Order #{order.order_number}",
-                message=f"New {order.order_type} order received. Total: ₱{order.total}",
-                notification_type='order',
-                priority='high'
-            )
-        except Exception:
-            pass
-        
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'])
