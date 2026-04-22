@@ -116,6 +116,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         product.archived_at = None
         product.save()
         serializer = self.get_serializer(product)
+
+    @action(detail=True, methods=['post'])
+    def permanent_delete(self, request, pk=None):
+        try:
+            product = Product.objects.get(pk=pk, is_archived=True)
+        except Product.DoesNotExist:
+            return Response({'error': 'Archived product not found'}, status=status.HTTP_404_NOT_FOUND)
+        product.delete()
+        return Response({'success': True}, status=status.HTTP_200_OK)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
