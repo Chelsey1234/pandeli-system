@@ -190,6 +190,16 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], permission_classes=[])
+    def available(self, request):
+        """Public endpoint — returns all available, non-archived products for the mobile app."""
+        products = Product.objects.filter(
+            is_available=True,
+            is_archived=False
+        ).order_by('category', 'name')
+        serializer = self.get_serializer(products, many=True, context={'request': request})
+        return Response(serializer.data)
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all().prefetch_related('items__product')

@@ -243,6 +243,7 @@ PUBLIC_PATHS = [
     '/api/app-features/',
     '/api/products/new_arrivals/',
     '/api/products/best_sellers/',
+    '/api/products/available/',
     '/api/bundles/',
     '/api/webhook/',
 ]
