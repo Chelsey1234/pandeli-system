@@ -269,10 +269,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                         subtotal=item_total
                     )
 
-                    # Update stock
-                    if product.stock >= quantity:
-                        product.stock -= quantity
-                        product.save(update_fields=['stock', 'is_available'])
+                    # NOTE: Stock is NOT deducted here — deduction happens on confirm()
+                    # This prevents double-deduction when the order is confirmed later
 
                 except Product.DoesNotExist:
                     order.delete()
@@ -299,37 +297,73 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
         order = self.get_object()
-        
+
         if order.status != 'pending':
             return Response(
                 {'error': f'Order cannot be confirmed - current status: {order.status}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Check stock
-        insufficient_stock = []
-        for item in order.items.all():
-            if item.product.stock < item.quantity:
-                insufficient_stock.append({
-                    'product': item.product.name,
-                    'available': item.product.stock,
-                    'requested': item.quantity
-                })
-        
-        if insufficient_stock:
-            return Response(
-                {'error': 'Insufficient stock', 'details': insufficient_stock},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Deduct stock
-        for item in order.items.all():
-            item.product.stock -= item.quantity
-            item.product.save()
-        
-        order.status = 'confirmed'
-        order.save()
-        
+
+        with transaction.atomic():
+            # Check stock availability first
+            insufficient_stock = []
+            for item in order.items.select_related('product').all():
+                if item.product.stock < item.quantity:
+                    insufficient_stock.append({
+                        'product': item.product.name,
+                        'available': item.product.stock,
+                        'requested': item.quantity
+                    })
+
+            if insufficient_stock:
+                return Response(
+                    {'error': 'Insufficient stock', 'details': insufficient_stock},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Deduct stock with row-level locking to prevent race conditions
+            for item in order.items.select_related('product').all():
+                product = Product.objects.select_for_update().get(pk=item.product.pk)
+                old_stock = product.stock
+                product.stock -= item.quantity
+                product.save()
+
+                # Audit trail
+                from .models import InventoryTransaction
+                InventoryTransaction.objects.create(
+                    product=product,
+                    transaction_type='out',
+                    quantity=item.quantity,
+                    previous_stock=old_stock,
+                    new_stock=product.stock,
+                    reference=order.order_number,
+                    notes='API order confirmation',
+                    created_by=request.user
+                )
+
+                # Deduct raw materials based on recipe
+                for recipe in product.recipe.select_related('raw_material').all():
+                    material = recipe.raw_material
+                    needed_qty = recipe.quantity * item.quantity
+                    if material.stock_quantity >= needed_qty:
+                        old_mat_stock = material.stock_quantity
+                        material.stock_quantity -= needed_qty
+                        material.save()
+                        from .models import RawMaterialTransaction
+                        RawMaterialTransaction.objects.create(
+                            raw_material=material,
+                            transaction_type='out',
+                            quantity=needed_qty,
+                            previous_stock=old_mat_stock,
+                            new_stock=material.stock_quantity,
+                            reference=order.order_number,
+                            notes=f'Used for {product.name}',
+                            created_by=request.user
+                        )
+
+            Order.objects.filter(pk=order.pk).update(status='confirmed')
+
+        order.refresh_from_db()
         serializer = self.get_serializer(order)
         return Response(serializer.data)
     

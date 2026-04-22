@@ -1873,7 +1873,8 @@ def pos_create_order(request):
                     subtotal=product.price * quantity
                 )
                 
-                # Update stock
+                # Update stock with row-level lock to prevent race conditions
+                product = Product.objects.select_for_update().get(pk=product.pk)
                 old_stock = product.stock
                 product.stock -= quantity
                 product.save()
