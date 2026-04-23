@@ -156,20 +156,26 @@ def is_production_team(user):
 
 @login_required
 def dashboard(request):
-    # Get date ranges — use localdate() to respect Asia/Manila timezone
     today = timezone.localdate()
     start_of_month = today.replace(day=1)
-    start_of_week = today - timedelta(days=today.weekday())
-    
-    # Sales data
-    daily_sales = Order.objects.filter(
-        created_at__date=today,
-    ).aggregate(total=Sum('total'))['total'] or 0
-
     yesterday = today - timedelta(days=1)
-    yesterday_sales = Order.objects.filter(
-        created_at__date=yesterday,
-    ).aggregate(total=Sum('total'))['total'] or 0
+    start_30 = today - timedelta(days=30)
+    tz = timezone.get_current_timezone()
+
+    # --- Consolidate sales queries into one pass ---
+    from django.db.models import Case, When, DecimalField
+    sales_agg = Order.objects.aggregate(
+        daily=Sum(Case(When(created_at__date=today, then='total'), output_field=DecimalField())),
+        yesterday=Sum(Case(When(created_at__date=yesterday, then='total'), output_field=DecimalField())),
+        monthly=Sum(Case(When(created_at__date__gte=start_of_month, then='total'), output_field=DecimalField())),
+        total_today=Count(Case(When(created_at__date=today, then='id'))),
+        pending=Count(Case(When(status='pending', then='id'))),
+    )
+    daily_sales   = sales_agg['daily'] or 0
+    yesterday_sales = sales_agg['yesterday'] or 0
+    monthly_sales = sales_agg['monthly'] or 0
+    total_orders  = sales_agg['total_today'] or 0
+    pending_orders = sales_agg['pending'] or 0
 
     if yesterday_sales > 0:
         sales_change_pct = ((daily_sales - yesterday_sales) / yesterday_sales) * 100
@@ -177,144 +183,73 @@ def dashboard(request):
         sales_change_pct = 100
     else:
         sales_change_pct = 0
-    
-    monthly_sales = Order.objects.filter(
-        created_at__date__gte=start_of_month,
-    ).aggregate(total=Sum('total'))['total'] or 0
-    
-    # Orders count
-    total_orders = Order.objects.filter(created_at__date=today).count()
-    pending_orders = Order.objects.filter(status='pending').count()
-    
-    # Low stock alert
-    low_stock_products = Product.objects.filter(
-        stock__lte=F('low_stock_threshold'),
-        is_available=True
-    )[:10]
-    
-    # Sales by category and top products — always initialize lists first
-    start_30 = today - timedelta(days=30)
-    category_labels = []
-    category_sales = []
-    category_qty = []
-    top_product_labels = []
-    top_product_sales = []
-    top_product_qty = []
 
-    tz = timezone.get_current_timezone()
+    # Low stock
+    low_stock_products = list(Product.objects.filter(
+        stock__lte=F('low_stock_threshold'), is_archived=False
+    ).only('id', 'name', 'stock', 'low_stock_threshold')[:10])
 
-    # Best selling products — last 30 days, use OrderItem if available
-    best_sellers_oi = list(OrderItem.objects.filter(
-        order__created_at__date__gte=start_30
-    ).values(
-        'product__name', 'product__id'
-    ).annotate(
-        quantity=Sum('quantity'),
-        total_sales=Sum('subtotal')
+    # Best sellers + category + top products — all from one queryset scan
+    oi_base = OrderItem.objects.filter(order__created_at__date__gte=start_30)
+
+    best_sellers = list(oi_base.values('product__name', 'product__id').annotate(
+        quantity=Sum('quantity'), total_sales=Sum('subtotal')
     ).order_by('-quantity')[:5])
 
-    if best_sellers_oi:
-        best_sellers = best_sellers_oi
-    else:
-        # Fallback: use product_name stored directly in orders
-        # Use Sum('total') as proxy for sales, Count('id') as order count
+    if not best_sellers:
         best_sellers = list(
             Order.objects.exclude(product_name__isnull=True).exclude(product_name='')
-            .values('product_name')
-            .annotate(quantity=Count('id'), total_sales=Sum('total'))
+            .values('product_name').annotate(quantity=Count('id'), total_sales=Sum('total'))
             .order_by('-total_sales')[:5]
         )
         for b in best_sellers:
             b['product__name'] = b.pop('product_name', '')
 
-    tz = timezone.get_current_timezone()
+    sales_by_category_oi = list(oi_base.values('product__category').annotate(
+        total_sales=Sum('subtotal'), total_qty=Sum('quantity')
+    ).order_by('-total_sales'))
 
-    sales_by_category_oi = list(
-        OrderItem.objects.filter(
-            order__created_at__date__gte=start_30
-        ).values('product__category').annotate(
-            total_sales=Sum('subtotal'),
-            total_qty=Sum('quantity')
-        ).order_by('-total_sales')
-    )
+    top_products_oi = list(oi_base.values('product__name').annotate(
+        total_sales=Sum('subtotal'), total_qty=Sum('quantity')
+    ).order_by('-total_sales')[:10])
 
-    top_products_oi = list(
-        OrderItem.objects.filter(
-            order__created_at__date__gte=start_30
-        ).values('product__name').annotate(
-            total_sales=Sum('subtotal'),
-            total_qty=Sum('quantity')
-        ).order_by('-total_sales')[:10]
-    )
+    # Build chart data
+    category_labels, category_sales_data, category_qty = [], [], []
+    if sales_by_category_oi:
+        cat_map = dict(Product.CATEGORY_CHOICES)
+        for item in sales_by_category_oi:
+            cat = cat_map.get(item['product__category'], str(item['product__category']).title())
+            category_labels.append(cat)
+            category_sales_data.append(float(item['total_sales']))
+            category_qty.append(int(item['total_qty'] or 0))
 
     if top_products_oi:
         top_product_labels = [p.get('product__name', '')[:20] for p in top_products_oi]
-        top_product_sales = [float(p['total_sales']) for p in top_products_oi]
-        top_product_qty = [p.get('total_qty', 0) for p in top_products_oi]
+        top_product_sales  = [float(p['total_sales']) for p in top_products_oi]
+        top_product_qty    = [p.get('total_qty', 0) for p in top_products_oi]
     else:
-        # Fallback: use product_name from orders
-        fallback_top = list(
-            Order.objects.filter(
-                created_at__date__gte=start_30
-            ).exclude(product_name__isnull=True).exclude(product_name='')
-            .values('product_name')
-            .annotate(total_sales=Sum('total'), total_qty=Count('id'))
-            .order_by('-total_sales')[:10]
-        )
-        top_product_labels = [p.get('product_name', '')[:20] for p in fallback_top]
-        top_product_sales = [float(p['total_sales']) for p in fallback_top]
-        top_product_qty = [p.get('total_qty', 0) for p in fallback_top]
+        top_product_labels, top_product_sales, top_product_qty = [], [], []
 
-    if sales_by_category_oi:
-        for item in sales_by_category_oi:
-            cat = dict(Product.CATEGORY_CHOICES).get(item['product__category'], item['product__category'].title())
-            category_labels.append(cat)
-            category_sales.append(float(item['total_sales']))
-            category_qty.append(int(item['total_qty'] or 0))
-    else:
-        # Fallback: match product_name from orders to get category
-        order_products = list(
-            Order.objects.filter(created_at__date__gte=start_30)
-            .exclude(product_name__isnull=True).exclude(product_name='')
-            .values('product_name')
-            .annotate(total=Sum('total'))
-        )
-        cat_totals = {}
-        for op in order_products:
-            product = Product.objects.filter(name__iexact=op['product_name']).first()
-            cat = product.get_category_display() if product else 'Other'
-            if cat not in cat_totals:
-                cat_totals[cat] = {'sales': 0, 'qty': 0}
-            cat_totals[cat]['sales'] += float(op['total'])
-        category_labels = list(cat_totals.keys())
-        category_sales = [v['sales'] for v in cat_totals.values()]
-        category_qty = [v['qty'] for v in cat_totals.values()]
-
-    # Sales graph data (last 7 days) — use Manila timezone for TruncDay
+    # Sales graph — last 7 days
     sales_qs = (
         Order.objects.filter(created_at__date__gte=today - timedelta(days=6))
         .annotate(day=TruncDay('created_at', tzinfo=tz))
-        .values('day')
-        .annotate(total=Sum('total'))
-        .order_by('day')
+        .values('day').annotate(total=Sum('total')).order_by('day')
     )
     sales_by_day = {row['day'].date(): float(row['total'] or 0) for row in sales_qs}
-    last_7_days = []
-    sales_data = []
+    last_7_days, sales_data = [], []
     for i in range(6, -1, -1):
-        date = today - timedelta(days=i)
-        last_7_days.append(date.strftime('%Y-%m-%d'))
-        sales_data.append(sales_by_day.get(date, 0))
-    
+        d = today - timedelta(days=i)
+        last_7_days.append(d.strftime('%Y-%m-%d'))
+        sales_data.append(sales_by_day.get(d, 0))
+
     # Recent orders
     recent_orders = Order.objects.select_related('customer').prefetch_related('items').order_by('-created_at')[:5]
-    
-    # Get products and customers for the New Order modal
-    products = Product.objects.filter(is_archived=False).only(
-        'id', 'name', 'price', 'stock', 'code'
-    ).order_by('name')[:100]
+
+    # Products + customers for New Order modal
+    products  = Product.objects.filter(is_archived=False).only('id', 'name', 'price', 'stock', 'code').order_by('name')[:100]
     customers = Customer.objects.only('id', 'name').order_by('name')[:50]
-    
+
     context = {
         'daily_sales': daily_sales,
         'monthly_sales': monthly_sales,
@@ -327,7 +262,7 @@ def dashboard(request):
         'sales_labels': json.dumps(last_7_days),
         'sales_data': json.dumps(sales_data),
         'category_labels': json.dumps(category_labels),
-        'category_sales': json.dumps(category_sales),
+        'category_sales': json.dumps(category_sales_data),
         'category_qty': json.dumps(category_qty),
         'top_product_labels': json.dumps(top_product_labels),
         'top_product_sales': json.dumps(top_product_sales),
@@ -335,7 +270,7 @@ def dashboard(request):
         'products': products,
         'customers': customers,
     }
-    
+
     return render(request, 'core/dashboard.html', context)
 
 # ========== PRODUCT VIEWS ==========

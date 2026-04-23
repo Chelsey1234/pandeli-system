@@ -18,30 +18,36 @@ def safe_context_processor(func):
 @safe_context_processor
 def notifications(request):
     """
-    Context processor to add notification data to all templates
+    Runs on every page — kept minimal: 1 combined query only.
     """
     context = {
         'unread_notifications_count': 0,
         'recent_notifications': [],
     }
-    
-    if hasattr(request, 'user') and request.user.is_authenticated:
-        try:
-            from .models import Notification
-            from django.db.models import Q
-            base_filter = Q(recipient_user=request.user)
-            unread_count = Notification.objects.filter(base_filter, is_read=False).count()
-            recent_notifications = Notification.objects.filter(
-                base_filter
-            ).only('id', 'title', 'message', 'notification_type', 'is_read', 'created_at', 'link'
-            ).order_by('-created_at')[:5]
-            context = {
-                'unread_notifications_count': unread_count,
-                'recent_notifications': recent_notifications,
-            }
-        except Exception as e:
-            logger.warning(f"Could not load notifications: {e}")
-    
+
+    if not (hasattr(request, 'user') and request.user.is_authenticated):
+        return context
+
+    # Skip on API and static paths — no navbar there
+    path = request.path
+    if path.startswith('/api/') or path.startswith('/static/') or path.startswith('/media/'):
+        return context
+
+    try:
+        from .models import Notification
+        # Single query — fetch recent 5, count unread from result
+        recent = list(
+            Notification.objects.filter(recipient_user=request.user)
+            .only('id', 'title', 'message', 'notification_type', 'is_read', 'created_at', 'link')
+            .order_by('-created_at')[:10]
+        )
+        context = {
+            'unread_notifications_count': sum(1 for n in recent if not n.is_read),
+            'recent_notifications': recent[:5],
+        }
+    except Exception as e:
+        logger.warning(f"Could not load notifications: {e}")
+
     return context
 
 
