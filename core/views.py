@@ -1477,6 +1477,17 @@ def bundles_api(request):
     if not bundles:
         return JsonResponse([], safe=False)
 
+    from django.core.files.storage import default_storage
+
+    def get_image_url(img_name):
+        """Use the configured storage backend (Supabase) to get the correct public URL."""
+        if not img_name:
+            return None
+        try:
+            return default_storage.url(img_name)
+        except Exception:
+            return None
+
     # Fetch ALL available products once — avoid N+1 query per bundle
     raw_products = list(
         Product.objects.filter(is_archived=False, is_available=True)
@@ -1487,23 +1498,13 @@ def bundles_api(request):
     products_by_category = {}
     all_products_list = []
     for p in raw_products:
-        img = p.get('image')
-        if img:
-            try:
-                from django.conf import settings
-                image_url = request.build_absolute_uri(settings.MEDIA_URL + img)
-            except Exception:
-                image_url = None
-        else:
-            image_url = None
-
         enriched = {
             'id': p['id'],
             'name': p['name'],
             'price': float(p['price']),
             'category': p['category'],
-            'description': p['description'],
-            'image_url': image_url,
+            'description': p['description'] or '',
+            'image_url': get_image_url(p.get('image')),
         }
         cat = p['category']
         if cat not in products_by_category:
@@ -1513,7 +1514,6 @@ def bundles_api(request):
 
     data = []
     for b in bundles:
-        # Filter products by bundle category
         if b.category:
             cats = [c.strip() for c in b.category.split(',') if c.strip()]
             bundle_products = []
@@ -1522,21 +1522,14 @@ def bundles_api(request):
         else:
             bundle_products = all_products_list
 
-        image_url = None
-        if b.image:
-            try:
-                image_url = request.build_absolute_uri(b.image.url)
-            except Exception:
-                image_url = b.image.url
-
         data.append({
             'id': b.id,
             'name': b.name,
-            'description': b.description,
-            'subtitle': b.subtitle,
+            'description': b.description or '',
+            'subtitle': b.subtitle or '',
             'item_count': b.item_count,
-            'category': b.category,
-            'image_url': image_url,
+            'category': b.category or '',
+            'image_url': get_image_url(b.image.name) if b.image else None,
             'order': b.order,
             'products': bundle_products,
         })
@@ -1586,15 +1579,16 @@ def order_webhook(request):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 def app_features_api(request):
+    from django.core.files.storage import default_storage
     features = AppFeature.objects.filter(is_active=True).order_by('order', '-created_at')
     data = []
     for f in features:
         image_url = None
         if f.image:
             try:
-                image_url = request.build_absolute_uri(f.image.url)
+                image_url = default_storage.url(f.image.name)
             except Exception:
-                image_url = f.image.url
+                image_url = None
         data.append({'id': f.id, 'title': f.title, 'subtitle': f.subtitle, 'image_url': image_url, 'order': f.order})
     return JsonResponse(data, safe=False)
 
