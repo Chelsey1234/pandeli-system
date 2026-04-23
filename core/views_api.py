@@ -13,7 +13,9 @@ from .serializers import *
 import json
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.filter(is_archived=False)
+    queryset = Product.objects.filter(is_archived=False).prefetch_related(
+        'recipe__raw_material'
+    )
     serializer_class = ProductSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     permission_classes = [IsAuthenticated]
@@ -208,7 +210,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         products = Product.objects.filter(
             is_available=True,
             is_archived=False
-        ).order_by('category', 'name')
+        ).prefetch_related('recipe__raw_material').order_by('category', 'name')
         serializer = self.get_serializer(products, many=True, context={'request': request})
         return Response(serializer.data)
 

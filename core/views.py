@@ -69,7 +69,7 @@ def login_view(request):
                 if not request.POST.get('remember_me'):
                     # Session expires on browser close
                     request.session.set_expiry(0)
-                
+                    
                 # Check if next_url is safe
                 if next_url and next_url != 'None' and next_url.startswith('/'):
                     return redirect(next_url)
@@ -307,11 +307,13 @@ def dashboard(request):
         sales_data.append(sales_by_day.get(date, 0))
     
     # Recent orders
-    recent_orders = Order.objects.select_related('customer').order_by('-created_at')[:5]
+    recent_orders = Order.objects.select_related('customer').prefetch_related('items').order_by('-created_at')[:5]
     
-    # Get products and customers for the New Order modal (all products so admin can create orders)
-    products = Product.objects.all().order_by('name')[:100]
-    customers = Customer.objects.all().order_by('name')[:50]
+    # Get products and customers for the New Order modal
+    products = Product.objects.filter(is_archived=False).only(
+        'id', 'name', 'price', 'stock', 'code'
+    ).order_by('name')[:100]
+    customers = Customer.objects.only('id', 'name').order_by('name')[:50]
     
     context = {
         'daily_sales': daily_sales,
@@ -374,23 +376,33 @@ def product_list(request):
 
 @login_required
 def inventory_status(request):
-    products = Product.objects.filter(is_archived=False).order_by('-stock')
-    raw_materials = RawMaterial.objects.all()
-    
-    # Pre-calculate inventory values for template
+    products = Product.objects.filter(is_archived=False).order_by('-stock').only(
+        'id', 'code', 'name', 'category', 'price', 'cost', 'stock',
+        'low_stock_threshold', 'image', 'is_available'
+    )
+    raw_materials = RawMaterial.objects.all().only(
+        'id', 'name', 'unit', 'stock_quantity', 'low_stock_threshold',
+        'reorder_point', 'supplier', 'cost_per_unit'
+    )
+
+    # Calculate inventory values in Python (avoid extra annotation query)
+    products = list(products)
     for product in products:
         product.inventory_value = product.stock * product.price
-    
+
+    raw_materials = list(raw_materials)
     for material in raw_materials:
         material.inventory_value = material.stock_quantity * material.cost_per_unit
-    
-    # Low stock items
-    low_stock_products = products.filter(stock__lte=F('low_stock_threshold'))
-    low_stock_materials = raw_materials.filter(stock_quantity__lte=F('low_stock_threshold'))
-    
+
+    # Low stock items (filter from already-fetched lists)
+    low_stock_products = [p for p in products if p.stock <= p.low_stock_threshold]
+    low_stock_materials = [m for m in raw_materials if m.stock_quantity <= m.low_stock_threshold]
+
     # Recent transactions
-    recent_transactions = InventoryTransaction.objects.select_related('product', 'created_by').order_by('-created_at')[:20]
-    
+    recent_transactions = InventoryTransaction.objects.select_related(
+        'product', 'created_by'
+    ).order_by('-created_at')[:20]
+
     context = {
         'products': products,
         'raw_materials': raw_materials,
@@ -409,12 +421,12 @@ def order_list(request):
     # Production team only sees incoming/in-process orders
     if is_production_team(request.user):
         orders = orders.filter(status__in=['pending', 'confirmed', 'preparing', 'ready'])
-    
+
     # Filter by status
     status = request.GET.get('status')
     if status:
         orders = orders.filter(status=status)
-    
+
     # Filter by date
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
@@ -422,7 +434,10 @@ def order_list(request):
         orders = orders.filter(created_at__date__gte=date_from)
     if date_to:
         orders = orders.filter(created_at__date__lte=date_to)
-    
+
+    # Limit to 200 most recent to keep page fast
+    orders = orders.order_by('-created_at')[:200]
+
     context = {
         'orders': orders,
         'status_choices': Order.ORDER_STATUS,
@@ -1557,25 +1572,58 @@ def bundle_delete(request, pk):
 def bundles_api(request):
     """Public API — returns active bundles with filtered products by category."""
     try:
-        bundles = Bundle.objects.filter(is_active=True).order_by('order', '-created_at')
+        bundles = list(Bundle.objects.filter(is_active=True).order_by('order', '-created_at'))
     except Exception:
         return JsonResponse([], safe=False)
+
+    if not bundles:
+        return JsonResponse([], safe=False)
+
+    # Fetch ALL available products once — avoid N+1 query per bundle
+    all_products = list(
+        Product.objects.filter(is_archived=False, is_available=True)
+        .values('id', 'name', 'price', 'category', 'description', 'image')
+    )
+
+    # Build image URLs and group by category
+    products_by_category = {}
+    all_products_list = []
+    for p in all_products:
+        # Build image URL
+        img = p.pop('image', None)
+        if img:
+            try:
+                from django.conf import settings
+                p['image_url'] = request.build_absolute_uri(settings.MEDIA_URL + img)
+            except Exception:
+                p['image_url'] = None
+        else:
+            p['image_url'] = None
+
+        cat = p['category']
+        if cat not in products_by_category:
+            products_by_category[cat] = []
+        products_by_category[cat].append(p)
+        all_products_list.append(p)
+
     data = []
     for b in bundles:
-        # Filter products by category if specified, else all products
-        product_qs = Product.objects.filter(is_archived=False, is_available=True)
+        # Filter products by bundle category
         if b.category:
-            # Support multiple categories (comma-separated)
             cats = [c.strip() for c in b.category.split(',') if c.strip()]
-            if cats:
-                product_qs = product_qs.filter(category__in=cats)
-        products = list(product_qs.values('id', 'name', 'price', 'category', 'description'))
+            bundle_products = []
+            for cat in cats:
+                bundle_products.extend(products_by_category.get(cat, []))
+        else:
+            bundle_products = all_products_list
+
         image_url = None
         if b.image:
             try:
                 image_url = request.build_absolute_uri(b.image.url)
             except Exception:
                 image_url = b.image.url
+
         data.append({
             'id': b.id,
             'name': b.name,
@@ -1585,7 +1633,7 @@ def bundles_api(request):
             'category': b.category,
             'image_url': image_url,
             'order': b.order,
-            'products': products,
+            'products': bundle_products,
         })
     return JsonResponse(data, safe=False)
 
