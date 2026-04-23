@@ -588,10 +588,9 @@ def update_payment_status(request, pk):
 
 @login_required
 def sales_report(request):
-    # Date range filter
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
-    
+
     if not date_from:
         date_from = (timezone.now() - timedelta(days=30)).date()
     else:
@@ -606,79 +605,43 @@ def sales_report(request):
             date_to = datetime.strptime(str(date_to), '%Y-%m-%d').date()
         except ValueError:
             date_to = timezone.now().date()
-    
-    # Include all orders in the selected date range (regardless of payment status)
-    orders = Order.objects.filter(
+
+    # Single aggregate query for summary stats
+    order_agg = Order.objects.filter(
         created_at__date__gte=date_from,
         created_at__date__lte=date_to,
-    )
-    
-    # Summary statistics
-    total_sales = orders.aggregate(total=Sum('total'))['total'] or 0
-    total_orders = orders.count()
+    ).aggregate(total_sales=Sum('total'), total_orders=Count('id'))
+    total_sales  = order_agg['total_sales'] or 0
+    total_orders = order_agg['total_orders'] or 0
     average_order = total_sales / total_orders if total_orders > 0 else 0
-    
-    # Sales by category — from OrderItem, fallback to product_name in orders
-    sales_by_category = list(OrderItem.objects.filter(
-        order__in=orders
-    ).values('product__category').annotate(
-        total=Sum('subtotal'),
-        quantity=Sum('quantity')
-    ).order_by('-total'))
 
-    # Fallback: group by product category using product_name matched to Product table
-    if not sales_by_category:
-        from django.db.models import FloatField
-        # Get product_name from orders and match to products to get category
-        order_products = list(
-            orders.exclude(product_name__isnull=True).exclude(product_name='')
-            .values('product_name')
-            .annotate(total=Sum('total'), quantity=Count('id'))
-        )
-        # Match product names to categories
-        cat_totals = {}
-        for op in order_products:
-            product = Product.objects.filter(name__iexact=op['product_name']).first()
-            if product:
-                cat = product.get_category_display()
-            else:
-                cat = 'Other'
-            if cat not in cat_totals:
-                cat_totals[cat] = {'total': 0, 'quantity': 0, 'product__category': cat}
-            cat_totals[cat]['total'] += float(op['total'])
-            cat_totals[cat]['quantity'] += op['quantity']
-        sales_by_category = sorted(cat_totals.values(), key=lambda x: -x['total'])
+    # Use direct date filter on OrderItem — avoids slow subquery
+    oi_filter = dict(order__created_at__date__gte=date_from, order__created_at__date__lte=date_to)
 
-    # Top products — from OrderItem, fallback to product_name in orders
-    top_products = list(OrderItem.objects.filter(
-        order__in=orders
-    ).values('product__name').annotate(
-        quantity=Sum('quantity'),
-        revenue=Sum('subtotal')
-    ).order_by('-revenue')[:10])
+    sales_by_category = list(
+        OrderItem.objects.filter(**oi_filter)
+        .values('product__category')
+        .annotate(total=Sum('subtotal'), quantity=Sum('quantity'))
+        .order_by('-total')
+    )
 
-    # Fallback: use product_name stored in orders if no OrderItems
-    if not top_products:
-        top_products = list(
-            orders.exclude(product_name__isnull=True).exclude(product_name='')
-            .values('product_name')
-            .annotate(quantity=Count('id'), revenue=Sum('total'))
-            .order_by('-revenue')[:10]
-        )
-        for p in top_products:
-            p['product__name'] = p.pop('product_name', '')
+    top_products = list(
+        OrderItem.objects.filter(**oi_filter)
+        .values('product__name')
+        .annotate(quantity=Sum('quantity'), revenue=Sum('subtotal'))
+        .order_by('-revenue')[:10]
+    )
 
-    # Daily sales for graph — use Manila timezone for accurate date grouping
+    # Daily sales graph
     tz = timezone.get_current_timezone()
-    daily_sales = orders.annotate(
-        day=TruncDay('created_at', tzinfo=tz)
-    ).values('day').annotate(
-        total=Sum('total')
-    ).order_by('day')
+    daily_sales_qs = (
+        Order.objects.filter(created_at__date__gte=date_from, created_at__date__lte=date_to)
+        .annotate(day=TruncDay('created_at', tzinfo=tz))
+        .values('day').annotate(total=Sum('total')).order_by('day')
+    )
+    sales_dates   = [item['day'].astimezone(tz).strftime('%Y-%m-%d') for item in daily_sales_qs]
+    sales_amounts = [float(item['total']) for item in daily_sales_qs]
 
-    sales_dates = [item['day'].astimezone(tz).strftime('%Y-%m-%d') for item in daily_sales]
-    sales_amounts = [float(item['total']) for item in daily_sales]
-    
     context = {
         'date_from': date_from,
         'date_to': date_to,
@@ -1702,22 +1665,24 @@ def pos_view(request):
     """
     Point of Sale interface for walk-in customers
     """
-    # Get all available products
-    # Show all products in POS so the cashier can see items even when temporarily out of stock.
-    # Ordering/checkout is still blocked server-side by `pos_create_order` when stock is insufficient.
-    products = Product.objects.filter(is_archived=False).order_by('category', 'name')
-    
+    # Get all available products — defer heavy fields not needed for POS display
+    products = Product.objects.filter(is_archived=False).only(
+        'id', 'code', 'name', 'category', 'price', 'stock', 'image', 'is_available'
+    ).order_by('category', 'name')
+
     # Get categories for filtering
     categories = Product.CATEGORY_CHOICES
-    
+
     # Get recent orders (last 10)
     recent_orders = Order.objects.filter(
         order_type='walk_in'
-    ).select_related('customer').order_by('-created_at')[:10]
-    
+    ).select_related('customer').only(
+        'id', 'order_number', 'total', 'created_at', 'status', 'customer__name'
+    ).order_by('-created_at')[:10]
+
     # Get customers for quick selection
-    customers = Customer.objects.all().order_by('name')[:20]
-    
+    customers = Customer.objects.only('id', 'name').order_by('name')[:20]
+
     context = {
         'products': products,
         'categories': categories,
