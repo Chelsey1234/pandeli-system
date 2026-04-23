@@ -1580,31 +1580,38 @@ def bundles_api(request):
         return JsonResponse([], safe=False)
 
     # Fetch ALL available products once — avoid N+1 query per bundle
-    all_products = list(
+    raw_products = list(
         Product.objects.filter(is_archived=False, is_available=True)
         .values('id', 'name', 'price', 'category', 'description', 'image')
     )
 
-    # Build image URLs and group by category
+    # Build enriched product dicts grouped by category
     products_by_category = {}
     all_products_list = []
-    for p in all_products:
-        # Build image URL
-        img = p.pop('image', None)
+    for p in raw_products:
+        img = p.get('image')
         if img:
             try:
                 from django.conf import settings
-                p['image_url'] = request.build_absolute_uri(settings.MEDIA_URL + img)
+                image_url = request.build_absolute_uri(settings.MEDIA_URL + img)
             except Exception:
-                p['image_url'] = None
+                image_url = None
         else:
-            p['image_url'] = None
+            image_url = None
 
+        enriched = {
+            'id': p['id'],
+            'name': p['name'],
+            'price': float(p['price']),
+            'category': p['category'],
+            'description': p['description'],
+            'image_url': image_url,
+        }
         cat = p['category']
         if cat not in products_by_category:
             products_by_category[cat] = []
-        products_by_category[cat].append(p)
-        all_products_list.append(p)
+        products_by_category[cat].append(enriched)
+        all_products_list.append(enriched)
 
     data = []
     for b in bundles:
