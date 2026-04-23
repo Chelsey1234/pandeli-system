@@ -235,10 +235,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
     
     def create(self, request, *args, **kwargs):
-        """Override create to handle order items — supports multiple item formats"""
+        """Override create to handle order items — auto-confirms and deducts stock immediately."""
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"Order create request data keys: {list(request.data.keys())}")
 
         with transaction.atomic():
             order_type = request.data.get('order_type', 'online')
@@ -261,63 +260,116 @@ class OrderViewSet(viewsets.ModelViewSet):
                     order.customer_id = int(customer_id)
                     order.save(update_fields=['customer_id'])
                 except (ValueError, TypeError):
-                    pass  # UUID or invalid — leave customer as null
+                    pass
 
-            # Get items — support multiple formats
+            # Get items
             items_data = request.data.get('items', [])
             if not items_data:
                 order.delete()
                 return Response({'error': 'No items provided'}, status=status.HTTP_400_BAD_REQUEST)
 
-            logger.info(f"Items data: {items_data}")
-
             subtotal = Decimal('0.00')
-            total_quantity = 0
 
+            # Validate stock first before touching anything
+            order_items = []
             for item_data in items_data:
                 try:
-                    # Support both product_id and product formats
                     pid = item_data.get('product_id') or item_data.get('product')
-                    product = Product.objects.get(id=int(pid))
+                    product = Product.objects.select_for_update().get(id=int(pid))
                     quantity = int(item_data.get('quantity', 1))
                     price = Decimal(str(item_data.get('price', product.price)))
-                    item_total = price * quantity
-                    subtotal += item_total
-                    total_quantity += quantity
 
-                    OrderItem.objects.create(
-                        order=order,
-                        product=product,
-                        quantity=quantity,
-                        price=price,
-                        subtotal=item_total
-                    )
+                    if product.stock < quantity:
+                        order.delete()
+                        return Response(
+                            {'error': f'Insufficient stock for {product.name}. Available: {product.stock}'},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
-                    # NOTE: Stock is NOT deducted here — deduction happens on confirm()
-                    # This prevents double-deduction when the order is confirmed later
+                    order_items.append({
+                        'product': product,
+                        'quantity': quantity,
+                        'price': price,
+                        'subtotal': price * quantity,
+                    })
+                    subtotal += price * quantity
 
                 except Product.DoesNotExist:
                     order.delete()
                     return Response({'error': f'Product {pid} not found'}, status=status.HTTP_400_BAD_REQUEST)
                 except Exception as e:
-                    logger.error(f"Error creating order item: {e}")
+                    logger.error(f"Error processing order item: {e}")
                     order.delete()
                     return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Calculate totals
+            # Create order items + deduct stock
+            from .notifications import notify_if_low_stock, notify_if_material_low
+            for item in order_items:
+                product = item['product']
+                quantity = item['quantity']
+
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    quantity=quantity,
+                    price=item['price'],
+                    subtotal=item['subtotal'],
+                )
+
+                # Deduct stock with row-level lock
+                old_stock = product.stock
+                product.stock -= quantity
+                product.save()  # triggers is_available sync via Product.save()
+
+                InventoryTransaction.objects.create(
+                    product=product,
+                    transaction_type='out',
+                    quantity=quantity,
+                    previous_stock=old_stock,
+                    new_stock=product.stock,
+                    reference=order.order_number,
+                    notes='App order',
+                    created_by=request.user,
+                )
+
+                notify_if_low_stock(product)
+
+                # Deduct raw materials via recipe
+                for recipe in product.recipe.select_related('raw_material').all():
+                    material = recipe.raw_material
+                    needed = recipe.quantity * quantity
+                    if material.stock_quantity >= needed:
+                        old_mat = material.stock_quantity
+                        material.stock_quantity -= needed
+                        material.save()
+                        RawMaterialTransaction.objects.create(
+                            raw_material=material,
+                            transaction_type='out',
+                            quantity=needed,
+                            previous_stock=old_mat,
+                            new_stock=material.stock_quantity,
+                            reference=order.order_number,
+                            notes=f'Used for {product.name}',
+                            created_by=request.user,
+                        )
+                        notify_if_material_low(material)
+
+            # Calculate totals and auto-confirm
             discount = Decimal(str(request.data.get('discount', 0) or 0))
-            tax = Decimal('0')
             total = subtotal - discount
 
-            order.subtotal = subtotal
-            order.tax = tax
-            order.discount = discount
-            order.total = total
-            order.save()
+            Order.objects.filter(pk=order.pk).update(
+                subtotal=subtotal,
+                tax=Decimal('0'),
+                discount=discount,
+                total=total,
+                status='confirmed',  # Auto-confirm so stock is always deducted
+            )
 
+        order.refresh_from_db()
         serializer = self.get_serializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
         order = self.get_object()

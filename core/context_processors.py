@@ -48,25 +48,34 @@ def notifications(request):
 @safe_context_processor
 def products_context(request):
     """
-    Context processor to add products to all templates for the New Order modal
+    Context processor — only loads products/customers on pages that need the New Order modal.
+    Skipped on API, static, and non-modal pages to avoid 2 extra DB queries per request.
     """
     context = {
         'products': [],
-        'customers': [],  # Also add customers for the order modal
+        'customers': [],
     }
-    
-    if hasattr(request, 'user') and request.user.is_authenticated:
-        try:
-            from .models import Product, Customer
-            context = {
-                'products': Product.objects.filter(
-                    is_archived=False, is_available=True
-                ).only('id', 'name', 'price', 'stock', 'category').order_by('name')[:50],
-                'customers': Customer.objects.only('id', 'name').order_by('name')[:30],
-            }
-        except Exception as e:
-            logger.warning(f"Could not load products/customers: {e}")
-    
+
+    if not (hasattr(request, 'user') and request.user.is_authenticated):
+        return context
+
+    # Only load on pages that actually show the New Order modal
+    modal_paths = ('/dashboard/', '/orders/', '/pos/')
+    path = request.path
+    if not any(path.startswith(p) for p in modal_paths):
+        return context
+
+    try:
+        from .models import Product, Customer
+        context = {
+            'products': Product.objects.filter(
+                is_archived=False, is_available=True
+            ).only('id', 'name', 'price', 'stock', 'category').order_by('name')[:50],
+            'customers': Customer.objects.only('id', 'name').order_by('name')[:30],
+        }
+    except Exception as e:
+        logger.warning(f"Could not load products/customers: {e}")
+
     return context
 
 
