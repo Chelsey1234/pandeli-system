@@ -84,7 +84,7 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default=''),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='6543'),
-        'CONN_MAX_AGE': 60,  # Reuse DB connections for 60s — big speed improvement
+        'CONN_MAX_AGE': 0,  # Must be 0 for Supabase transaction pooler (pgBouncer)
         'OPTIONS': {
             'connect_timeout': 10,
             'keepalives': 1,
